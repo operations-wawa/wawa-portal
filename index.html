@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>wawa. Owner Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  /* Wawa Group brand colours — matched from thewawagroup.com */
+  --ink:      #2c1f14;   /* deep espresso brown — primary text */
+  --ink2:     #4a3828;   /* warm mid brown — secondary text */
+  --ink3:     #9a8878;   /* muted warm taupe — hints */
+  --paper:    #f5f0e8;   /* warm cream — page background */
+  --paper2:   #ede6d8;   /* slightly deeper cream — card surfaces */
+  --paper3:   #dfd6c4;   /* border/divider tone */
+  --gold:     #c9971a;   /* brand gold — primary accent */
+  --gold2:    #e0aa20;   /* lighter gold — hover states */
+  --gold-pale:#fdf6dc;   /* pale gold tint — backgrounds */
+  --brown:    #4a2e1a;   /* CTA dark brown — "Get Started" button */
+  --brown2:   #3a2010;   /* deeper brown — hover */
+  --green:    #1a5436;
+  --green-bg: #e8f2ec;
+  --red:      #7a1f1f;
+  --red-bg:   #faeaea;
+  --blue:     #1a3560;
+  --blue-bg:  #e6edf8;
+  --shadow:    0 1px 12px rgba(44,31,20,0.08);
+  --shadow-lg: 0 6px 36px rgba(44,31,20,0.14);
+  --r: 10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Work Sans',sans-serif;background:var(--paper);color:var(--ink);font-size:13px;line-height:1.6;}
+
+/* ── AUTH ── */
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#2c1f14;position:relative;overflow:hidden;}
+#auth::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 80px,rgba(201,151,26,0.05) 80px,rgba(201,151,26,0.05) 81px);}
+.auth-card{background:var(--paper);border-radius:18px;padding:48px 44px;width:400px;box-shadow:var(--shadow-lg);position:relative;z-index:1;animation:fadeUp .45s ease both;}
+.auth-logo{margin-bottom:20px;}
+
+.auth-tagline{font-size:11px;color:var(--ink3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:32px;}
+.tabs{display:flex;background:var(--paper2);border-radius:7px;padding:3px;margin-bottom:26px;gap:3px;}
+.tab{flex:1;padding:7px;border:none;background:transparent;border-radius:5px;cursor:pointer;font-family:'Work Sans',sans-serif;font-size:12px;font-weight:500;color:var(--ink3);transition:all .18s;}
+.tab.on{background:#2c1f14;color:var(--paper);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--ink3);margin-bottom:5px;letter-spacing:.4px;text-transform:uppercase;}
+.field input,.field select{width:100%;padding:10px 13px;border:1.5px solid var(--paper3);border-radius:7px;font-family:'Work Sans',sans-serif;font-size:13px;background:white;color:var(--ink);outline:none;transition:border-color .18s;}
+.field input:focus,.field select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,26,.12);}
+.btn-primary{width:100%;padding:12px;background:var(--gold);color:var(--brown);border:none;border-radius:7px;font-family:'Work Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;margin-top:6px;letter-spacing:.3px;}
+.btn-primary:hover{background:var(--gold2);color:var(--brown2);}
+.auth-hint{font-size:11px;color:var(--ink3);text-align:center;margin-top:14px;}
+
+/* ── APP SHELL ── */
+#app{display:none;min-height:100vh;}
+.topbar{background:#2c1f14;color:var(--paper);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-logo{display:flex;align-items:center;}
+
+.topbar-right{display:flex;align-items:center;gap:16px;}
+.topbar-user{font-size:12px;color:rgba(245,240,232,.5);}
+.topbar-user b{color:var(--paper);}
+.btn-logout{padding:5px 13px;background:transparent;border:1px solid rgba(201,151,26,.3);color:rgba(246,243,237,.6);border-radius:5px;cursor:pointer;font-size:12px;font-family:'Work Sans',sans-serif;transition:all .18s;}
+.btn-logout:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── ADMIN ── */
+#admin-view{display:none;padding:28px 32px;max-width:1280px;margin:0 auto;}
+.page-title{font-family:'Work Sans',sans-serif;font-size:32px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px;}
+.page-title span{color:var(--gold);}
+.page-desc{color:var(--ink3);font-size:12px;margin-bottom:24px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat{background:white;border-radius:var(--r);padding:18px;box-shadow:var(--shadow);border:1px solid var(--paper3);}
+.stat .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);margin-bottom:7px;}
+.stat .val{font-family:'Work Sans',sans-serif;font-size:24px;font-weight:700;color:var(--ink);}
+.stat .sub{font-size:11px;color:var(--green);margin-top:3px;}
+.stat .sub.neg{color:var(--red);}
+
+/* ── CONTROLS ── */
+.ctrl-bar{background:white;border-radius:var(--r);padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);border:1px solid var(--paper3);flex-wrap:wrap;}
+.ctrl-bar select{padding:8px 12px;border:1.5px solid var(--paper3);border-radius:7px;font-family:'Work Sans',sans-serif;font-size:12px;background:var(--paper);color:var(--ink);outline:none;transition:border-color .18s;cursor:pointer;}
+.ctrl-bar select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,26,.12);}
+.btn-run{padding:9px 20px;background:var(--gold);color:var(--brown);border:none;border-radius:7px;font-family:'Work Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:6px;letter-spacing:.3px;text-transform:uppercase;}
+.btn-run:hover{background:var(--gold2);transform:translateY(-1px);box-shadow:0 4px 14px rgba(201,151,26,.35);}
+.btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
+.prog-wrap{display:none;background:var(--paper2);border-radius:100px;height:5px;overflow:hidden;width:160px;}
+.prog-bar{height:100%;background:var(--gold);border-radius:100px;transition:width .3s ease;}
+.run-lbl{font-size:11px;color:var(--ink3);display:none;}
+
+/* ── TABLE ── */
+.tbl-wrap{background:white;border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--paper3);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--paper2);padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
+tbody tr{border-bottom:1px solid var(--paper2);transition:background .12s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--paper);}
+tbody td{padding:11px 14px;font-size:12px;}
+.owner-name{font-weight:600;color:var(--ink);}
+.prop-sub{color:var(--ink3);font-size:11px;margin-top:1px;}
+.pos{color:var(--green);font-weight:600;}
+.neg{color:var(--red);font-weight:600;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.b-sent{background:var(--green-bg);color:var(--green);}
+.b-pending{background:#fdf3e0;color:#7a5800;}
+.b-dot{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;}
+.btn-sm{padding:5px 11px;border-radius:5px;font-family:'Work Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--paper3);background:white;color:var(--ink2);transition:all .15s;}
+.btn-sm:hover{border-color:var(--ink);color:var(--ink);}
+
+/* ── LOG ── */
+.log{background:white;border-radius:var(--r);padding:18px 22px;box-shadow:var(--shadow);border:1px solid var(--paper3);max-height:220px;overflow-y:auto;margin-top:18px;}
+.log-entry{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--paper2);animation:fadeIn .25s ease both;}
+.log-entry:last-child{border-bottom:none;}
+.log-t{font-size:10px;color:var(--ink3);white-space:nowrap;margin-top:1px;min-width:56px;}
+.log-m{font-size:11px;color:var(--ink2);line-height:1.5;}
+.log-m b{color:var(--ink);}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(20,20,18,.55);z-index:200;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--paper);border-radius:16px;width:900px;max-width:100%;box-shadow:var(--shadow-lg);animation:fadeUp .28s ease both;margin:auto;}
+.modal-hd{background:#2c1f14;color:var(--paper);padding:22px 26px;border-radius:16px 16px 0 0;display:flex;align-items:flex-start;justify-content:space-between;}
+.modal-hd h2{font-family:'Work Sans',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.2px;}
+.modal-hd p{font-size:11px;color:rgba(246,243,237,.45);margin-top:2px;}
+.modal-close{background:transparent;border:none;color:var(--paper);font-size:20px;cursor:pointer;opacity:.45;line-height:1;transition:opacity .15s;}
+.modal-close:hover{opacity:1;}
+.modal-body{padding:0;}
+
+/* ── STATEMENT INSIDE MODAL ── */
+.stmt-wrap{padding:26px 28px;}
+
+/* Header */
+.stmt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:18px;border-bottom:2px solid var(--ink);}
+.stmt-logo{display:flex;align-items:center;}
+.stmt-logo span{color:var(--gold);}
+.stmt-meta{text-align:right;}
+.stmt-meta .prop-name{font-family:'Work Sans',sans-serif;font-size:20px;font-weight:600;color:var(--ink);}
+.stmt-meta .period{font-size:11px;color:var(--ink3);margin-top:2px;}
+
+/* Section headers */
+.sect-hd{background:#2c1f14;color:var(--paper);padding:7px 12px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0;}
+.sect-hd.cogs{background:#4a3828;}
+.sect-hd.expenses{background:#3d2a18;}
+.sect-hd.summary{background:var(--gold);color:var(--brown);}
+
+/* Transaction table */
+.tx-table{width:100%;border-collapse:collapse;}
+.tx-table thead th{background:var(--paper2);padding:7px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
+.tx-table thead th.r{text-align:right;}
+.tx-table tbody td{padding:7px 12px;font-size:11.5px;border-bottom:1px solid var(--paper2);color:var(--ink2);}
+.tx-table tbody td.r{text-align:right;font-family:'Work Sans',sans-serif;font-size:11px;}
+.tx-table tbody tr:hover td{background:var(--paper);}
+.tx-table tfoot td{padding:8px 12px;font-size:11.5px;font-weight:700;background:var(--paper2);border-top:2px solid var(--paper3);}
+.tx-table tfoot td.r{text-align:right;font-family:'Work Sans',sans-serif;font-size:11px;}
+.chip{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;background:var(--blue-bg);color:var(--blue);}
+.chip.offline{background:var(--gold-pale);color:var(--gold);}
+
+/* Net summary */
+.net-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.net-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--paper2);font-size:12px;}
+.net-row:last-child{border-bottom:none;}
+.net-row.total{background:#2c1f14;color:var(--paper);font-weight:700;font-size:13px;}
+.net-row.payout{background:var(--gold);color:var(--brown);font-weight:700;font-size:14px;}
+.net-row .nr{font-family:'Work Sans',sans-serif;font-size:11.5px;}
+.net-row.total .nr,.net-row.payout .nr{font-size:13px;}
+.fx-row{background:var(--paper2);display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:11px;color:var(--ink3);}
+.fx-row b{color:var(--ink);}
+
+/* AI summary strip */
+.ai-strip{background:#2c1f14;padding:14px 18px;margin:0 28px 20px;border-radius:var(--r);}
+.ai-strip-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--gold2);font-weight:700;margin-bottom:5px;}
+.ai-strip-text{font-size:12px;color:rgba(246,243,237,.8);line-height:1.65;}
+.ai-strip-text.loading{color:rgba(246,243,237,.3);font-style:italic;}
+
+/* Modal actions */
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;padding:16px 28px 22px;}
+.btn-act{padding:9px 16px;border-radius:7px;font-family:'Work Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .18s;display:flex;align-items:center;gap:5px;}
+.btn-dark{background:#2c1f14;color:var(--paper);}
+.btn-dark:hover{background:var(--gold);color:var(--brown);}
+.btn-gold{background:var(--gold);color:var(--brown);}
+.btn-gold:hover{background:var(--gold2);}
+.btn-ghost{background:white;color:var(--ink2);border:1.5px solid var(--paper3);}
+.btn-ghost:hover{border-color:var(--ink);color:var(--ink);}
+.send-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 28px 22px;border-top:1px solid var(--paper2);margin:0;padding-top:14px;}
+.chip-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1.5px solid var(--paper3);font-size:11px;font-weight:500;cursor:pointer;background:white;transition:all .18s;color:var(--ink2);}
+.chip-btn:hover{border-color:var(--gold);background:var(--gold-pale);color:var(--ink);}
+.chip-btn.sent{border-color:var(--green);background:var(--green-bg);color:var(--green);pointer-events:none;}
+
+/* ── OWNER VIEW ── */
+#owner-view{display:none;padding:28px 32px;max-width:900px;margin:0 auto;}
+.owner-hero{background:#2c1f14;border-radius:var(--r);padding:26px 28px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;}
+.owner-hero h2{font-family:'Work Sans',sans-serif;font-size:26px;font-weight:600;color:white;letter-spacing:-.3px;}
+.owner-hero p{font-size:12px;color:rgba(246,243,237,.4);margin-top:3px;}
+.owner-payout{font-family:'Work Sans',sans-serif;font-size:34px;font-weight:700;color:var(--gold);}
+.payout-lbl{font-size:10px;color:rgba(246,243,237,.4);text-align:right;margin-top:2px;}
+.stmt-cards{display:flex;flex-direction:column;gap:10px;}
+.stmt-card{background:white;border-radius:var(--r);padding:16px 20px;box-shadow:var(--shadow);border:1px solid var(--paper3);display:flex;align-items:center;justify-content:space-between;transition:box-shadow .18s;cursor:pointer;}
+.stmt-card:hover{box-shadow:var(--shadow-lg);}
+.stmt-card h3{font-size:14px;font-weight:600;color:var(--ink);}
+.stmt-card p{font-size:11px;color:var(--ink3);margin-top:2px;}
+.stmt-card-amt{font-family:'Work Sans',sans-serif;font-size:24px;font-weight:600;color:var(--green);}
+
+/* ── NOTIF ── */
+.notif{position:fixed;bottom:22px;right:22px;background:#2c1f14;color:var(--paper);padding:11px 16px;border-radius:9px;font-size:12px;font-weight:500;box-shadow:var(--shadow-lg);z-index:999;display:none;animation:fadeUp .25s ease;}
+.notif.show{display:block;}
+
+/* ── SPINNER ── */
+.spinner{width:13px;height:13px;border:2px solid rgba(20,20,18,.15);border-top-color:var(--ink);border-radius:50%;animation:spin .6s linear infinite;display:inline-block;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
+
+/* ── ANALYTICS VIEW ── */
+#analytics-view{display:none;padding:28px 32px;max-width:1280px;margin:0 auto;}
+.admin-sub-nav{display:none;background:white;border-bottom:2px solid var(--paper3);padding:0 32px;position:sticky;top:64px;z-index:99;}
+.view-tab{padding:11px 18px;background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:'Work Sans',sans-serif;font-size:12px;font-weight:600;color:var(--ink3);cursor:pointer;transition:all .18s;letter-spacing:.2px;}
+.view-tab.on{color:var(--gold);border-bottom-color:var(--gold);}
+.view-tab:hover:not(.on){color:var(--ink);}
+.anl-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);margin-bottom:14px;margin-top:4px;}
+.anl-overview-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px;}
+.chart-card-wide{background:white;border-radius:var(--r);padding:20px;box-shadow:var(--shadow);border:1px solid var(--paper3);}
+.prop-chart-section{margin-bottom:20px;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);}
+.prop-chart-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#2c1f14;}
+.prop-chart-name{font-size:14px;font-weight:600;color:white;}
+.prop-chart-payout{font-size:13px;font-weight:700;color:var(--gold);}
+.prop-chart-body{background:white;border:1px solid var(--paper3);border-top:none;padding:20px;display:grid;grid-template-columns:200px 1fr 1fr;gap:24px;align-items:start;}
+.metrics-col{display:flex;flex-direction:column;gap:8px;}
+.metric-item{padding:10px 12px;background:var(--paper);border-radius:7px;border:1px solid var(--paper3);}
+.metric-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin-bottom:3px;}
+.metric-val{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;}
+.metric-sub{font-size:10px;color:var(--ink3);margin-top:2px;}
+.canvas-wrap{position:relative;height:170px;}
+.chart-col-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin-bottom:2px;}
+.chart-col-sub{font-size:10px;color:var(--ink3);margin-bottom:12px;}
+.exp-line{display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;background:var(--paper);border-radius:5px;}
+.exp-total{display:flex;justify-content:space-between;font-size:11px;padding:6px 8px;background:var(--paper2);border-radius:5px;font-weight:700;border-top:1px solid var(--paper3);margin-top:2px;}
+
+/* ── GROUPED EXPENSES ── */
+.exp-group{margin-top:6px;}
+.exp-group:first-child{margin-top:0;}
+.exp-cat-hd{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--paper2);border-radius:6px;cursor:default;}
+.exp-cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.exp-cat-name{font-size:11px;font-weight:700;color:var(--ink);flex:1;}
+.exp-cat-count{font-size:9px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+.exp-cat-amt{font-size:11px;font-weight:700;color:var(--red);}
+.exp-cat-items{border-left:2px solid var(--paper3);margin-left:11px;margin-bottom:2px;}
+.exp-cat-item{display:flex;justify-content:space-between;align-items:center;padding:3px 8px 3px 10px;font-size:10.5px;color:var(--ink2);border-bottom:1px solid var(--paper2);}
+.exp-cat-item:last-child{border-bottom:none;}
+
+/* ── STATEMENTS HERO ── */
+.stmt-hero{background:linear-gradient(135deg,#2c1f14 0%,#3d2510 100%);border-radius:var(--r);padding:26px 28px;margin-bottom:18px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:20px;position:relative;overflow:hidden;}
+.stmt-hero::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 60px,rgba(201,151,26,.04) 60px,rgba(201,151,26,.04) 61px);}
+.stmt-hero-left{position:relative;z-index:1;}
+.stmt-hero-title{font-size:26px;font-weight:700;color:white;letter-spacing:-.4px;margin-bottom:3px;}
+.stmt-hero-title span{color:var(--gold);}
+.stmt-hero-desc{font-size:11px;color:rgba(246,243,237,.38);letter-spacing:.2px;}
+.stmt-hero-kpis{display:flex;gap:0;position:relative;z-index:1;}
+.stmt-hero-kpi{padding:8px 20px;border-left:1px solid rgba(201,151,26,.2);text-align:right;}
+.stmt-hero-kpi:first-child{border-left:none;}
+.stmt-hero-kpi .kv{font-size:20px;font-weight:700;color:var(--gold);line-height:1.1;}
+.stmt-hero-kpi .kl{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:rgba(246,243,237,.3);margin-top:3px;font-weight:600;}
+
+/* Enhanced stat cards */
+.stat{position:relative;overflow:hidden;}
+.stat-bar{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:2px 0 0 2px;}
+.stat .trend{font-size:10px;margin-top:4px;display:flex;align-items:center;gap:3px;font-weight:600;}
+.trend-up{color:var(--green);}
+.trend-dn{color:var(--red);}
+.trend-neu{color:var(--ink3);}
+
+/* Enhanced table rows */
+.prop-name-main{font-weight:700;color:var(--ink);font-size:12px;}
+.prop-name-sub{font-size:10px;color:var(--ink3);margin-top:1px;}
+.mini-bar-wrap{height:3px;background:var(--paper2);border-radius:2px;margin-top:5px;width:72px;}
+.mini-bar{height:3px;border-radius:2px;transition:width .5s ease;}
+.mini-bar.gold{background:var(--gold);}
+.mini-bar.green{background:var(--green);}
+.mini-bar.red{background:var(--red);}
+.occ-pill{display:inline-block;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;margin-top:2px;}
+.occ-high{background:var(--green-bg);color:var(--green);}
+.occ-mid{background:#fdf3e0;color:#7a5800;}
+.occ-low{background:var(--red-bg);color:var(--red);}
+
+/* Enhanced log */
+.log-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.log-dot.ok{background:var(--green);}
+.log-dot.err{background:var(--red);}
+.log-dot.info{background:var(--gold);}
+.log-dot.def{background:var(--paper3);}
+
+/* ── ANALYTICS ENHANCEMENTS ── */
+.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.perf-card{background:white;border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--paper3);position:relative;overflow:hidden;}
+.perf-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
+.perf-gold::after{background:var(--gold);}
+.perf-silver::after{background:#aaa;}
+.perf-bronze::after{background:#c67c3a;}
+.perf-bad::after{background:var(--red);}
+.perf-rank{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);margin-bottom:5px;}
+.perf-name{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px;line-height:1.2;}
+.perf-val{font-size:21px;font-weight:700;color:var(--green);margin:5px 0 2px;}
+.perf-val.red{color:var(--red);}
+.perf-sub{font-size:10px;color:var(--ink3);}
+.perf-bar-bg{height:3px;background:var(--paper2);border-radius:2px;margin-top:10px;}
+.perf-bar-fill{height:3px;border-radius:2px;}
+
+.ytd-strip{background:linear-gradient(135deg,#2c1f14,#3d2510);border-radius:var(--r);padding:18px 22px;margin-bottom:20px;display:grid;grid-template-columns:repeat(5,1fr);gap:0;}
+.ytd-cell{padding:0 16px;border-left:1px solid rgba(201,151,26,.18);}
+.ytd-cell:first-child{border-left:none;padding-left:0;}
+.ytd-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:rgba(246,243,237,.32);font-weight:700;margin-bottom:5px;}
+.ytd-val{font-size:19px;font-weight:700;color:var(--gold);}
+.ytd-sub{font-size:10px;color:rgba(246,243,237,.28);margin-top:2px;}
+
+.trend-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;}
+.fx-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.fx-card{background:white;border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--paper3);}
+.fx-prop-name{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--paper2);}
+.fx-line{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:2px 0;color:var(--ink2);}
+.fx-impact-row{margin-top:8px;padding-top:7px;border-top:1px solid var(--paper2);display:flex;justify-content:space-between;align-items:center;}
+.fx-impact-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);font-weight:700;}
+.fx-impact-val{font-size:13px;font-weight:700;}
+
+/* ── DYNAMIC FILTER ── */
+.filter-btn{display:flex;align-items:center;gap:6px;background:var(--paper2);border-radius:7px;padding:6px 12px 6px 10px;border:1.5px solid var(--paper3);font-family:'Work Sans',sans-serif;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;transition:all .18s;white-space:nowrap;}
+.filter-btn:hover,.filter-btn.open{border-color:var(--gold);background:var(--gold-pale);}
+.filter-btn svg{flex-shrink:0;opacity:.5;}
+.filter-btn .btn-badge{background:var(--gold);color:var(--brown);border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;margin-left:2px;}
+.filter-popup-wrap{position:relative;}
+.filter-popup{position:absolute;top:calc(100% + 6px);left:0;background:white;border:1.5px solid var(--paper3);border-radius:10px;box-shadow:0 8px 32px rgba(44,31,20,.14);z-index:200;min-width:210px;overflow:hidden;animation:fadeUp .15s ease both;}
+.filter-popup-header{padding:10px 14px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);border-bottom:1px solid var(--paper2);}
+.filter-popup-item{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12px;color:var(--ink2);cursor:pointer;transition:background .12s;user-select:none;}
+.filter-popup-item:hover{background:var(--paper);}
+.filter-popup-item input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:pointer;flex-shrink:0;}
+.filter-popup-item.checked{color:var(--ink);font-weight:600;}
+.filter-popup-footer{padding:8px 14px;border-top:1px solid var(--paper2);display:flex;justify-content:flex-end;}
+.filter-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.filter-pill{display:inline-flex;align-items:center;gap:5px;background:var(--gold-pale);border:1px solid rgba(201,151,26,.4);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--ink2);}
+.filter-pill .pill-x{cursor:pointer;color:var(--ink3);font-size:13px;line-height:1;margin-left:1px;transition:color .12s;}
+.filter-pill .pill-x:hover{color:var(--red);}
+.filter-clear{font-size:11px;color:var(--ink3);cursor:pointer;padding:2px 0;transition:color .15s;background:none;border:none;font-family:'Work Sans',sans-serif;}
+.filter-clear:hover{color:var(--red);}
+.tbl-period-sep td{background:var(--paper2);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);padding:6px 14px;border-bottom:1px solid var(--paper3);}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH ── -->
+<div id="auth">
+  <div class="auth-card">
+    <div class="auth-logo"><img src="data:image/png;base64,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" alt="wawa." style="height:44px;display:block;"></div>
+    <div class="auth-tagline" style="letter-spacing:.8px;font-size:10px;text-transform:uppercase;color:var(--ink3)">Owner Statement Portal</div>
+    <div class="tabs">
+      <button class="tab on" onclick="setRole('admin')">Admin</button>
+      <button class="tab" onclick="setRole('owner')">Property Owner</button>
+    </div>
+    <div id="admin-fields">
+      <div class="field"><label>Email</label><input type="email" value="admin@wawagroup.com"/></div>
+      <div class="field"><label>Password</label><input type="password" value="••••••••"/></div>
+    </div>
+    <div id="owner-fields" style="display:none">
+      <div class="field"><label>Select owner</label>
+        <select id="owner-sel">
+          <option value="chelsea">Chelsea Townhouse</option>
+          <option value="oasis">Oasis</option>
+          <option value="lokko">Lokko Serene</option>
+          <option value="broadway">The Broadway</option>
+          <option value="mona_lisa">The Mona Lisa</option>
+          <option value="eden">The Eden</option>
+          <option value="urban_farmhouse">The Urban Farmhouse</option>
+          <option value="ocean_heights">Ocean Heights</option>
+          <option value="nshornaa">Nshornaa</option>
+        </select>
+      </div>
+      <div class="field"><label>Access code</label><input type="password" value="1234"/></div>
+    </div>
+    <button class="btn-primary" onclick="login()">Sign in →</button>
+    <div class="auth-hint" style="color:var(--ink3)">Demo credentials pre-filled</div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo"><img src="data:image/png;base64,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" alt="wawa." style="height:44px;display:block;"></div>
+    <div class="topbar-right">
+      <div class="topbar-user">Signed in as <b id="topbar-name">—</b></div>
+      <button class="btn-logout" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- ADMIN SUB-NAV -->
+  <div class="admin-sub-nav" id="admin-sub-nav">
+    <button class="view-tab on" id="tab-statements" onclick="showAdminTab('statements')">&#9776; Statements</button>
+    <button class="view-tab" id="tab-analytics" onclick="showAdminTab('analytics')">&#9685; Analytics</button>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="admin-view">
+
+    <!-- Hero Strip -->
+    <div class="stmt-hero">
+      <div class="stmt-hero-left">
+        <div class="stmt-hero-title">Statement <span>Engine</span></div>
+        <div class="stmt-hero-desc">Generate &amp; disburse owner statements across the wawa. portfolio</div>
+      </div>
+      <div class="stmt-hero-kpis">
+        <div class="stmt-hero-kpi"><div class="kv" id="stat-props">—</div><div class="kl">Properties</div></div>
+        <div class="stmt-hero-kpi"><div class="kv" id="stat-income">—</div><div class="kl">Total Income</div></div>
+        <div class="stmt-hero-kpi"><div class="kv" id="stat-twg">—</div><div class="kl">TWG Fees</div></div>
+        <div class="stmt-hero-kpi"><div class="kv" id="stat-sent">—</div><div class="kl">Statements Sent</div></div>
+      </div>
+    </div>
+
+    <!-- Stat Cards Row -->
+    <div class="stats-row" style="margin-bottom:18px;">
+      <div class="stat" style="border-left:3px solid var(--gold);">
+        <div class="lbl">Period</div>
+        <div class="val" style="font-size:16px;margin-top:2px" id="stat-period-card">Jan 2026</div>
+        <div class="sub" id="stat-period">Current reporting window</div>
+      </div>
+      <div class="stat" style="border-left:3px solid var(--green);">
+        <div class="lbl">Avg Payout / Property</div>
+        <div class="val" id="stat-avg-payout">—</div>
+        <div class="trend trend-neu" id="stat-avg-trend">— vs last period</div>
+      </div>
+      <div class="stat" style="border-left:3px solid var(--blue);">
+        <div class="lbl">Statements Pending</div>
+        <div class="val" id="stat-pending">—</div>
+        <div class="sub neg" id="stat-sent-sub">Awaiting dispatch</div>
+      </div>
+      <div class="stat" style="border-left:3px solid var(--red);">
+        <div class="lbl">Highest Expense (GHS)</div>
+        <div class="val" id="stat-top-exp">—</div>
+        <div class="sub" id="stat-top-exp-prop">—</div>
+      </div>
+    </div>
+
+    <!-- Control Bar -->
+    <div class="ctrl-bar">
+      <!-- Hidden period-sel kept for backwards compat with renderAnalytics, openStatement, etc. -->
+      <select id="period-sel" style="display:none">
+        <option>March 2026</option>
+        <option>February 2026</option>
+        <option selected>January 2026</option>
+        <option>December 2025</option>
+        <option>November 2025</option>
+      </select>
+
+      <!-- Period filter dropdown -->
+      <div class="filter-popup-wrap" id="fp-wrap-period">
+        <button class="filter-btn" id="fp-btn-period" onclick="toggleFilterDropdown('period')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span id="fp-label-period">Jan '26</span>
+          <span class="btn-badge" id="fp-badge-period" style="display:none">1</span>
+        </button>
+        <div class="filter-popup" id="fp-popup-period" style="display:none">
+          <div class="filter-popup-header">Select Period(s)</div>
+          <div class="filter-popup-item" onclick="togglePeriodFilter('March 2026')"><input type="checkbox" data-period="March 2026" onclick="event.stopPropagation()" onchange="togglePeriodFilter('March 2026')"> March 2026</div>
+          <div class="filter-popup-item" onclick="togglePeriodFilter('February 2026')"><input type="checkbox" data-period="February 2026" onclick="event.stopPropagation()" onchange="togglePeriodFilter('February 2026')"> February 2026</div>
+          <div class="filter-popup-item checked" onclick="togglePeriodFilter('January 2026')"><input type="checkbox" data-period="January 2026" checked onclick="event.stopPropagation()" onchange="togglePeriodFilter('January 2026')"> January 2026</div>
+          <div class="filter-popup-item" onclick="togglePeriodFilter('December 2025')"><input type="checkbox" data-period="December 2025" onclick="event.stopPropagation()" onchange="togglePeriodFilter('December 2025')"> December 2025</div>
+          <div class="filter-popup-item" onclick="togglePeriodFilter('November 2025')"><input type="checkbox" data-period="November 2025" onclick="event.stopPropagation()" onchange="togglePeriodFilter('November 2025')"> November 2025</div>
+        </div>
+      </div>
+
+      <!-- Property filter dropdown -->
+      <div class="filter-popup-wrap" id="fp-wrap-prop">
+        <button class="filter-btn" id="fp-btn-prop" onclick="toggleFilterDropdown('prop')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 8h6M5 5h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span id="fp-label-prop">All properties</span>
+          <span class="btn-badge" id="fp-badge-prop" style="display:none">0</span>
+        </button>
+        <div class="filter-popup" id="fp-popup-prop" style="display:none">
+          <div class="filter-popup-header">Select Properties</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('chelsea')"><input type="checkbox" data-prop="chelsea" onclick="event.stopPropagation()" onchange="togglePropFilter('chelsea')"> Chelsea Townhouse</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('oasis')"><input type="checkbox" data-prop="oasis" onclick="event.stopPropagation()" onchange="togglePropFilter('oasis')"> Oasis</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('lokko')"><input type="checkbox" data-prop="lokko" onclick="event.stopPropagation()" onchange="togglePropFilter('lokko')"> Lokko Serene</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('broadway')"><input type="checkbox" data-prop="broadway" onclick="event.stopPropagation()" onchange="togglePropFilter('broadway')"> The Broadway</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('mona_lisa')"><input type="checkbox" data-prop="mona_lisa" onclick="event.stopPropagation()" onchange="togglePropFilter('mona_lisa')"> The Mona Lisa</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('eden')"><input type="checkbox" data-prop="eden" onclick="event.stopPropagation()" onchange="togglePropFilter('eden')"> The Eden</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('urban_farmhouse')"><input type="checkbox" data-prop="urban_farmhouse" onclick="event.stopPropagation()" onchange="togglePropFilter('urban_farmhouse')"> The Urban Farmhouse</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('ocean_heights')"><input type="checkbox" data-prop="ocean_heights" onclick="event.stopPropagation()" onchange="togglePropFilter('ocean_heights')"> Ocean Heights</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('nshornaa')"><input type="checkbox" data-prop="nshornaa" onclick="event.stopPropagation()" onchange="togglePropFilter('nshornaa')"> Nshornaa</div>
+          <div class="filter-popup-footer"><button class="filter-clear" onclick="clearPropFilter()">Clear all</button></div>
+        </div>
+      </div>
+
+      <button class="btn-run" id="run-btn" onclick="runStatements()"><span id="run-icon">▶</span> Generate statements</button>
+      <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <div class="prog-wrap" id="prog-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+        <div class="run-lbl" id="run-lbl">Initialising…</div>
+      </div>
+    </div>
+    <!-- Active filter pills -->
+    <div class="filter-pills" id="filter-pills-row" style="display:none;"></div>
+
+    <!-- Portfolio Table -->
+    <div class="sec-title" style="margin-bottom:10px" id="portfolio-title">Portfolio — loading…</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Property</th>
+          <th>Bookings &amp; Occupancy</th>
+          <th>Income (USD)</th>
+          <th>Income (GHS)</th>
+          <th>TWG Fees</th>
+          <th>Expenses (GHS)</th>
+          <th>Net Payout (USD)</th>
+          <th>Status</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="admin-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="log" id="log-panel" style="margin-top:16px;">
+      <div class="sec-title" style="margin-bottom:10px;font-size:10px;letter-spacing:.7px;">
+        <span>Activity Log</span>
+        <span style="font-size:10px;color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0" id="log-count"></span>
+      </div>
+      <div id="log-entries">
+        <div class="log-entry">
+          <div class="log-dot info"></div>
+          <div class="log-t">09:01</div>
+          <div class="log-m">Portal ready. <b>Wawa Group</b> statement engine initialised.</div>
+        </div>
+        <div class="log-entry">
+          <div class="log-dot ok"></div>
+          <div class="log-t">09:02</div>
+          <div class="log-m">December 2025 statements delivered to all owners.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER VIEW -->
+  <div id="owner-view">
+    <div class="owner-hero">
+      <div><h2 id="owner-hello">Welcome back</h2><p id="owner-prop">Your property</p></div>
+      <div style="text-align:right"><div class="owner-payout" id="owner-net">—</div><div class="payout-lbl" id="owner-payout-lbl">Net payout</div></div>
+    </div>
+    <div class="sec-title" style="margin-bottom:12px">Statements</div>
+    <div class="stmt-cards" id="owner-cards"></div>
+  </div>
+
+  <!-- ANALYTICS VIEW -->
+  <div id="analytics-view">
+    <div class="page-title">Analytics <span style="color:var(--gold)">Dashboard</span></div>
+    <div class="page-desc">Visual breakdown of bookings, channels, and expenses per property for the selected period.</div>
+    <div id="analytics-container">
+      <div style="padding:40px;text-align:center;color:var(--ink3)">Loading data — switch to Statements tab first to load a period, then return here.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATEMENT MODAL ── -->
+<div class="modal-bg" id="modal-bg" onclick="bgClose(event)">
+  <div class="modal" id="modal">
+    <div class="modal-hd">
+      <div><h2 id="modal-title">Statement</h2><p id="modal-sub">—</p></div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ── APPS SCRIPT URL ──────────────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxE5IJVyO6AINKStv8VgE-FCHbBXEj49OF8ZGHbZ9UprR6qoqYR_4CmDyhjaqqCJpb7/exec';
+
+// ── ANTHROPIC API KEY ─────────────────────────────────────────────
+const ANTHROPIC_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your key
+
+// ── MULTI-PERIOD DATA STORE ───────────────────────────────────────
+const PERIOD_DATA   = {};  // { '2026-01': [props…], … }
+const PERIOD_LABELS = ['March 2026','February 2026','January 2026','December 2025','November 2025'];
+
+async function loadAllPeriods() {
+  addLog('Loading all periods for trend analysis…', 'info');
+  for (const label of PERIOD_LABELS) {
+    const code = periodToCode(label);
+    if (PERIOD_DATA[code]) continue;
+    try {
+      const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${code}`);
+      const json = await res.json();
+      if (json.ok) { PERIOD_DATA[code] = json.data; }
+    } catch(e) { /* skip failed period */ }
+    await sleep(150);
+  }
+  addLog('Multi-period data ready — ' + Object.keys(PERIOD_DATA).length + ' periods loaded.', 'ok');
+}
+
+// ── OCCUPANCY / ADR / REVPAN ──────────────────────────────────────
+function parseNights(stayStr) {
+  if (!stayStr) return 0;
+  // Handle "Jan 5 – Jan 10", "5 Jan – 10 Jan", "2026-01-05 – 2026-01-10"
+  const parts = stayStr.split(/\s*[–\-]\s*/);
+  if (parts.length < 2) return 0;
+  try {
+    const a = new Date(parts[0].trim()), b = new Date(parts[parts.length - 1].trim());
+    if (isNaN(a) || isNaN(b)) return 0;
+    return Math.max(0, Math.round((b - a) / 86400000));
+  } catch { return 0; }
+}
+
+function getDaysInPeriod(periodCode) {
+  if (!periodCode) return 30;
+  const [yr, mo] = periodCode.split('-').map(Number);
+  return new Date(yr, mo, 0).getDate();
+}
+
+function computeOccupancyMetrics(p, periodCode) {
+  const bookings    = p.bookings || [];
+  const totalNights = bookings.reduce((s, b) =>
+    s + (b.nights || parseNights(b.stayDates) || parseNights(b.dates) || 1), 0);
+  const availNights = getDaysInPeriod(periodCode);
+  const totalUSD    = bookings.reduce((s, b) => s + (b.usd || 0), 0);
+  const totalGHS    = bookings.reduce((s, b) => s + (b.ghs || 0), 0);
+  const occupancy   = availNights > 0 ? Math.min(100, (totalNights / availNights) * 100) : 0;
+  const adr         = totalNights > 0 ? totalUSD / totalNights : 0;
+  const adrGHS      = totalNights > 0 ? totalGHS / totalNights : 0;
+  const revpan      = availNights > 0 ? totalUSD / availNights : 0;
+  return { totalNights, availNights, occupancy, adr, adrGHS, revpan };
+}
+
+// ── PERIOD HELPERS ───────────────────────────────────────────────
+function periodToCode(label) {
+  const months = { January:'01',February:'02',March:'03',April:'04',
+    May:'05',June:'06',July:'07',August:'08',September:'09',
+    October:'10',November:'11',December:'12' };
+  const [mon, yr] = label.split(' ');
+  return `${yr}-${months[mon] || '01'}`;
+}
+
+async function loadLiveData(period) {
+  try {
+    addLog('Connecting to Google Sheets…', 'info');
+    const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${period}`);
+    const json = await res.json();
+    if (!json.ok) { addLog('Error: ' + json.error, 'err'); return; }
+    Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
+    json.data.forEach(o => { PROPERTIES[o.id] = o; statuses[o.id] = 'pending'; });
+    // Store in multi-period cache
+    PERIOD_DATA[period] = json.data;
+    // Sync filterPeriods to the loaded period
+    const _loadedLabel = PERIOD_LABELS.find(l => periodToCode(l) === period) || 'January 2026';
+    filterPeriods = new Set([_loadedLabel]);
+    const _sel = document.getElementById('period-sel');
+    if (_sel) _sel.value = _loadedLabel;
+    renderFilteredTable();
+    renderFilterPills();
+    updateDashboardStats(json.data, period);
+    addLog(`Live data loaded — ${json.data.length} properties for ${document.getElementById('period-sel').value}.`, 'ok');
+  } catch(e) {
+    addLog('Could not reach Apps Script: ' + e.message, 'err');
+  }
+}
+
+function updateDashboardStats(data, period) {
+  const periodLabel = document.getElementById('period-sel').value;
+  const totalUSD  = data.reduce((s, o) => s + (o.totalIncUSD || 0), 0);
+  const totalTWG  = data.reduce((s, o) => s + (o.cogsUSD    || 0), 0);
+  const sentCount = data.filter(o => statuses[o.id] === 'sent').length;
+  const pending   = data.length - sentCount;
+  const avgPayout = data.length > 0
+    ? data.reduce((s, o) => s + (o.ownerPayout || computeProperty(o).ownerPayout), 0) / data.length
+    : 0;
+
+  // Hero KPIs
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('stat-props',  data.length);
+  set('stat-income', '$' + totalUSD.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}));
+  set('stat-twg',    '$' + totalTWG.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}));
+  set('stat-sent',   sentCount + ' / ' + data.length);
+
+  // Stat cards
+  set('stat-period-card', periodLabel.split(' ')[0].slice(0,3) + " '" + periodLabel.slice(-2));
+  set('stat-period',      periodLabel);
+  set('stat-avg-payout',  '$' + avgPayout.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}));
+  set('stat-pending',     pending);
+  set('stat-sent-sub',    pending === 0 ? 'All dispatched ✓' : pending + ' awaiting dispatch');
+
+  // Top expense property
+  let topExpProp = null, topExpVal = 0;
+  data.forEach(o => {
+    const expGHS = o.expGHS || (o.expenses || []).reduce((s, e) => s + (e.ghs || 0), 0);
+    if (expGHS > topExpVal) { topExpVal = expGHS; topExpProp = o.name || o.id; }
+  });
+  set('stat-top-exp',      topExpProp ? fmtGHS(topExpVal) : '—');
+  set('stat-top-exp-prop', topExpProp || '—');
+
+  const pt = document.getElementById('portfolio-title');
+  if (pt) pt.textContent = 'Portfolio — ' + periodLabel;
+}
+
+// ── DATA (fallback static, replaced by live on load) ─────────────
+// All property data loaded live from Apps Script — no static data
+const PROPERTIES = {};
+const statuses = {};
+const OWNER_IDS = ['chelsea','oasis','lokko','broadway','mona_lisa','eden','urban_farmhouse','ocean_heights','nshornaa'];
+
+function computeProperty(p) {
+  // If live data from Apps Script, use pre-computed financials directly
+  if (p.ownerPayout !== undefined) {
+    return {
+      totalIncUSD: p.totalIncUSD || 0,
+      totalIncGHS: p.totalIncGHS || 0,
+      cogsUSD:     p.cogsUSD    || 0,
+      cogsGHS:     p.cogsGHS    || 0,
+      expUSD:      p.expUSD     || 0,
+      expGHS:      p.expGHS     || 0,
+      netUSD:      p.netUSD     || 0,
+      netGHS:      p.netGHS     || 0,
+      ghsConvUSD:  p.ghsToUSD   || 0,
+      ownerPayout: p.ownerPayout|| 0,
+    };
+  }
+  // Compute from raw bookings if pre-computed not available
+  const totalIncUSD = (p.bookings||[]).reduce((s,b) => s + (b.usd||0), 0);
+  const totalIncGHS = (p.bookings||[]).reduce((s,b) => s + (b.ghs||0), 0);
+  const twgPct = ((p.twgPct || 15)) / 100;
+  const cogsUSD = Math.round(totalIncUSD * twgPct * 100) / 100;
+  const cogsGHS = Math.round(totalIncGHS * twgPct * 100) / 100;
+  const expUSD  = (p.expenses||[]).reduce((s,e) => s + (e.usd||0), 0);
+  const expGHS  = (p.expenses||[]).reduce((s,e) => s + (e.ghs||0), 0);
+  const netUSD  = Math.round((totalIncUSD - cogsUSD - expUSD) * 100) / 100;
+  const netGHS  = Math.round((totalIncGHS - cogsGHS - expGHS) * 100) / 100;
+  const fxRate  = p.fxRate || 11;
+  const ghsConvUSD = Math.round((netGHS / fxRate) * 100) / 100;
+  const ownerPayout = Math.round((netUSD + ghsConvUSD) * 100) / 100;
+  return { totalIncUSD, totalIncGHS, cogsUSD, cogsGHS, expUSD, expGHS, netUSD, netGHS, ghsConvUSD, ownerPayout };
+}
+
+function usd(n) { return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function ghs(n) { return (n < 0 ? '-GHS' : 'GHS') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtUSD(n) { return n === 0 ? '$0.00' : usd(n); }
+function fmtGHS(n) { return n === 0 ? 'GHS0.00' : ghs(n); }
+
+// ── AUTH ──
+let role = 'admin', currentProp = null;
+
+function setRole(r) {
+  role = r;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('on', (i===0&&r==='admin')||(i===1&&r==='owner')));
+  document.getElementById('admin-fields').style.display = r==='admin' ? '' : 'none';
+  document.getElementById('owner-fields').style.display = r==='owner' ? '' : 'none';
+}
+
+function login() {
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  if (role === 'admin') {
+    document.getElementById('topbar-name').textContent = 'Admin';
+    document.getElementById('admin-sub-nav').style.display = 'block';
+    document.getElementById('admin-view').style.display = 'block';
+    renderAdminTable();
+    const period = periodToCode(document.getElementById('period-sel').value || 'January 2026');
+    loadLiveData(period).then(() => loadAllPeriods());
+  } else {
+    const pid = document.getElementById('owner-sel').value;
+    document.getElementById('topbar-name').textContent = pid;
+    document.getElementById('owner-view').style.display = 'block';
+    renderOwnerView();
+  }
+}
+
+function logout() {
+  document.getElementById('auth').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('admin-view').style.display = 'none';
+  document.getElementById('admin-sub-nav').style.display = 'none';
+  document.getElementById('analytics-view').style.display = 'none';
+  document.getElementById('owner-view').style.display = 'none';
+  // reset tab state
+  document.getElementById('tab-statements').classList.add('on');
+  document.getElementById('tab-analytics').classList.remove('on');
+}
+
+// ── ADMIN TABLE ──
+function renderAdminTable() {
+  const tbody = document.getElementById('admin-tbody');
+  const props = Object.values(PROPERTIES).filter(p => p && p.id);
+  if (props.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--ink3)">Loading live data from Google Sheets…</td></tr>';
+    return;
+  }
+  const periodCode = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
+  const maxPayout  = Math.max(...props.map(p => computeProperty(p).ownerPayout), 1);
+  const maxIncome  = Math.max(...props.map(p => computeProperty(p).totalIncUSD), 1);
+
+  tbody.innerHTML = props.map(p => {
+    const c   = computeProperty(p);
+    const occ = computeOccupancyMetrics(p, periodCode);
+    const st  = statuses[p.id] || 'pending';
+    const badge = st === 'sent'
+      ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
+      : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
+    const occPct   = occ.occupancy.toFixed(0);
+    const occClass = occ.occupancy >= 70 ? 'occ-high' : occ.occupancy >= 40 ? 'occ-mid' : 'occ-low';
+    const payBar   = Math.round((c.ownerPayout / maxPayout) * 100);
+    const incBar   = Math.round((c.totalIncUSD / maxIncome) * 100);
+    const bookings = (p.bookings || []).length;
+
+    return `<tr data-id="${p.id}">
+      <td>
+        <div class="prop-name-main">${p.name || p.id}</div>
+        <div class="prop-name-sub">${p.fxDate || ''}</div>
+      </td>
+      <td>
+        <div style="font-weight:600;color:var(--ink)">${bookings}</div>
+        <div style="font-size:10px;color:var(--ink3);margin-top:1px">${occ.totalNights} night${occ.totalNights!==1?'s':''}</div>
+        <span class="occ-pill ${occClass}" style="margin-top:3px;display:inline-block">${occPct}% occ.</span>
+      </td>
+      <td>
+        <div class="pos" style="font-weight:600">${fmtUSD(c.totalIncUSD)}</div>
+        <div class="mini-bar-wrap"><div class="mini-bar gold" style="width:${incBar}%"></div></div>
+      </td>
+      <td style="color:var(--ink2)">${fmtGHS(c.totalIncGHS)}</td>
+      <td class="neg" style="font-weight:600">−${fmtUSD(c.cogsUSD)}</td>
+      <td>
+        <div class="neg" style="font-weight:600">−${fmtGHS(c.expGHS)}</div>
+        <div style="font-size:10px;color:var(--ink3);margin-top:1px">${(p.expenses||[]).length} item${(p.expenses||[]).length!==1?'s':''}</div>
+      </td>
+      <td>
+        <div class="pos" style="font-weight:700;font-size:13px">${fmtUSD(c.ownerPayout)}</div>
+        <div class="mini-bar-wrap"><div class="mini-bar green" style="width:${payBar}%"></div></div>
+        <div style="font-size:9px;color:var(--ink3);margin-top:3px">ADR ${fmtUSD(occ.adr)}/night</div>
+      </td>
+      <td id="st-${p.id}">${badge}</td>
+      <td><button class="btn-sm" onclick="openStatement('${p.id}')">View</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── RUN ENGINE ──
+const runSteps = [
+  'Connecting to Google Sheets…','Reading booking data…','Computing TWG service fees…',
+  'Calculating property expenses…','Generating PDF statements…','Uploading to Google Drive…',
+  'Sending emails to owners…','Dispatching WhatsApp notifications…','Logging all activity…'
+];
+async function runStatements() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Running…';
+  document.getElementById('prog-wrap').style.display = 'block';
+  document.getElementById('run-lbl').style.display = 'block';
+  for (let i = 0; i < runSteps.length; i++) {
+    document.getElementById('run-lbl').textContent = runSteps[i];
+    document.getElementById('prog-bar').style.width = ((i+1)/runSteps.length*100)+'%';
+    const dot = i===0?'info': i>=6?'ok':'info';
+    addLog(runSteps[i], dot);
+    await sleep(550 + Math.random()*350);
+  }
+  Object.keys(PROPERTIES).forEach(k => statuses[k]='sent');
+  renderFilteredTable();
+  const propCount = Object.keys(PROPERTIES).length;
+  addLog(`All ${propCount} statements generated and dispatched.`, 'ok');
+  document.getElementById('run-lbl').textContent = `✓ Complete — ${propCount} statements sent`;
+  btn.disabled = false; btn.innerHTML = '▶ Generate statements';
+  setTimeout(() => { document.getElementById('prog-wrap').style.display='none'; document.getElementById('run-lbl').style.display='none'; }, 4000);
+  notify(`✓ ${propCount} statements generated and dispatched`);
+}
+
+function addLog(msg, type='def') {
+  const t  = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.innerHTML = `<div class="log-dot ${type}"></div><div class="log-t">${t}</div><div class="log-m">${msg}</div>`;
+  const container = document.getElementById('log-entries');
+  container.prepend(el);
+  const cnt = document.getElementById('log-count');
+  if (cnt) cnt.textContent = container.children.length + ' entries';
+}
+function sleep(ms) { return new Promise(r => setTimeout(r,ms)); }
+
+// ── STATEMENT MODAL ──
+let activeProp = null;
+async function openStatement(pid, preloaded) {
+  // Use preloaded data or fetch fresh from Apps Script
+  if (preloaded) {
+    activeProp = preloaded;
+    PROPERTIES[pid] = preloaded;
+  } else if (PROPERTIES[pid] && PROPERTIES[pid].bookings) {
+    activeProp = PROPERTIES[pid];
+  } else {
+    // Fetch fresh
+    try {
+      const period = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
+      const res = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${period}`);
+      const json = await res.json();
+      if (json.ok) { activeProp = json.data; PROPERTIES[pid] = json.data; }
+      else { notify('Could not load statement data'); return; }
+    } catch(e) { notify('Error: ' + e.message); return; }
+  }
+  const c = computeProperty(activeProp);
+  const _activePeriod = document.getElementById('period-sel')?.value || 'January 2026';
+  document.getElementById('modal-title').textContent = activeProp.name + ' — ' + _activePeriod;
+  document.getElementById('modal-sub').textContent = (activeProp.bookings||[]).length + ' bookings · TWG fee ' + (activeProp.twgPct||15) + '%';
+  document.getElementById('modal-body').innerHTML = buildStatement(activeProp, c, _activePeriod);
+  document.getElementById('modal-bg').classList.add('open');
+  fetchAI(activeProp, c, _activePeriod);
+}
+
+function buildStatement(p, c, _activePeriod) {
+  _activePeriod = _activePeriod || 'January 2026';
+  // COGS per booking
+  const cogsRows = p.bookings.map(b => {
+    const _twgPct = (p.twgPct||15)/100;
+    const fu = b.usd > 0 ? parseFloat((b.usd * _twgPct).toFixed(2)) : 0;
+    const fg = b.ghs > 0 ? parseFloat((b.ghs * _twgPct).toFixed(2)) : 0;
+    return `<tr>
+      <td>TWG Service Fee</td><td>${b.guest}</td><td>${b.displayDate||b.stayDates||b.rawDate||''}</td><td></td>
+      <td class="r neg">${fu > 0 ? '−'+fmtUSD(fu) : '$0.00'}</td>
+      <td class="r neg">${fg > 0 ? '−'+fmtGHS(fg) : 'GHS0.00'}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="stmt-wrap">
+    <!-- Header -->
+    <div class="stmt-header">
+      <div class="stmt-logo"><img src="data:image/png;base64,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" alt="wawa." style="height:44px;display:block;"></div>
+      <div class="stmt-meta">
+        <div class="prop-name">${p.name}</div>
+        <div class="period">${_activePeriod} · Owner Statement</div>
+      </div>
+    </div>
+
+    <!-- RENTAL INCOME -->
+    <div class="sect-hd">Rental Income</div>
+    <table class="tx-table">
+      <thead><tr>
+        <th>Guest</th><th>Stay Dates</th><th>Date</th><th>Channel</th>
+        <th class="r">USD</th><th class="r">GHS</th>
+      </tr></thead>
+      <tbody>
+        ${p.bookings.map(b => `<tr>
+          <td>${b.guest}</td>
+          <td style="color:var(--ink3);font-size:11px">${b.stayDates||b.dates||''}</td>
+          <td style="color:var(--ink3);font-size:11px">${b.displayDate||b.stayDates||b.rawDate||''}</td>
+          <td><span class="chip ${(b.platform||b.channel||'')==='Offline'?'offline':''}">${b.platform||b.channel||''}</span></td>
+          <td class="r ${b.usd>0?'pos':''}">${b.usd>0 ? fmtUSD(b.usd) : '$0.00'}</td>
+          <td class="r ${b.ghs>0?'pos':''}">${b.ghs>0 ? fmtGHS(b.ghs) : 'GHS0.00'}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="4"><strong>TOTAL RENTAL INCOME</strong></td>
+        <td class="r pos"><strong>${fmtUSD(c.totalIncUSD)}</strong></td>
+        <td class="r pos"><strong>${fmtGHS(c.totalIncGHS)}</strong></td>
+      </tr></tfoot>
+    </table>
+
+    <!-- COGS -->
+    <div class="sect-hd cogs">COGS — TWG Service Fee (${activeProp.twgPct||15}%)</div>
+    <table class="tx-table">
+      <thead><tr>
+        <th>Description</th><th>Guest</th><th>Date</th><th></th>
+        <th class="r">USD</th><th class="r">GHS</th>
+      </tr></thead>
+      <tbody>${cogsRows}</tbody>
+      <tfoot><tr>
+        <td colspan="4"><strong>TOTAL COGS</strong></td>
+        <td class="r neg"><strong>−${fmtUSD(c.cogsUSD)}</strong></td>
+        <td class="r neg"><strong>−${fmtGHS(c.cogsGHS)}</strong></td>
+      </tr></tfoot>
+    </table>
+
+    <!-- EXPENSES -->
+    <div class="sect-hd expenses">Expenses</div>
+    <table class="tx-table">
+      <thead><tr>
+        <th>Description</th><th>Date</th><th>Category</th><th></th>
+        <th class="r">USD</th><th class="r">GHS</th>
+      </tr></thead>
+      <tbody>
+        ${p.expenses.map(e => `<tr>
+          <td>${e.desc||e.description||''}</td>
+          <td style="color:var(--ink3);font-size:11px">${e.rawDate||e.date||''}</td>
+          <td><span class="chip" style="background:var(--paper2);color:var(--ink3)">${e.category||e.cat||''}</span></td>
+          <td></td>
+          <td class="r">${e.usd > 0 ? '−'+fmtUSD(e.usd) : '$0.00'}</td>
+          <td class="r neg">${e.ghs > 0 ? '−'+fmtGHS(e.ghs) : 'GHS0.00'}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="4"><strong>TOTAL EXPENSES</strong></td>
+        <td class="r">$0.00</td>
+        <td class="r neg"><strong>−${fmtGHS(c.expGHS)}</strong></td>
+      </tr></tfoot>
+    </table>
+
+    <!-- NET INCOME SUMMARY -->
+    <div class="sect-hd summary">Net Income Summary</div>
+    <div>
+      <div class="net-row"><span>Total Revenue</span><span style="display:flex;gap:24px"><span class="nr pos">${fmtUSD(c.totalIncUSD)}</span><span class="nr pos">${fmtGHS(c.totalIncGHS)}</span></span></div>
+      <div class="net-row"><span>Total COGS</span><span style="display:flex;gap:24px"><span class="nr neg">−${fmtUSD(c.cogsUSD)}</span><span class="nr neg">−${fmtGHS(c.cogsGHS)}</span></span></div>
+      <div class="net-row"><span>Total Expenses</span><span style="display:flex;gap:24px"><span class="nr">$0.00</span><span class="nr neg">−${fmtGHS(c.expGHS)}</span></span></div>
+      <div class="net-row total"><span>NET INCOME</span><span style="display:flex;gap:24px"><span class="nr">${fmtUSD(c.netUSD)}</span><span class="nr ${c.netGHS<0?'neg':''}">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></span></div>
+      <div class="net-row total" style="background:var(--ink2)"><span>OWNER PAYOUT (before FX)</span><span style="display:flex;gap:24px"><span class="nr">${fmtUSD(c.netUSD)}</span><span class="nr ${c.netGHS<0?'neg':''}">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></span></div>
+    </div>
+    <div class="fx-row">
+      <span>GHS → USD conversion @ rate <b>${p.fxRate}</b></span>
+      <span style="font-family:'Work Sans',sans-serif;font-size:11px;color:var(--red)">−${fmtUSD(-c.ghsConvUSD)}</span>
+      <span style="color:var(--ink3)">${p.fxDate}</span>
+    </div>
+    <div class="net-row payout"><span>TOTAL OWNER PAYOUT</span><span class="nr">${fmtUSD(c.ownerPayout)}</span></div>
+  </div>`;
+}
+
+async function fetchAI(p, c, period) {
+  // Insert AI strip after modal body is rendered
+  const body = document.getElementById('modal-body');
+  const strip = document.createElement('div');
+  strip.innerHTML = `<div class="ai-strip"><div class="ai-strip-lbl">✦ AI Commentary</div><div class="ai-strip-text loading" id="ai-txt">Generating analysis…</div></div>
+  <div class="modal-actions">
+    <button class="btn-act btn-dark" onclick="downloadPDF()">⬇ Download PDF</button>
+    <button class="btn-act btn-gold" onclick="markSent()">✓ Mark as sent</button>
+    <button class="btn-act btn-ghost" onclick="closeModal()">Close</button>
+  </div>
+  <div class="send-chips">
+    <button class="chip-btn" id="chip-email" onclick="sendVia('email')">📧 Email</button>
+    <button class="chip-btn" id="chip-whatsapp" onclick="sendVia('whatsapp')">💬 WhatsApp</button>
+    <button class="chip-btn" id="chip-drive" onclick="sendVia('drive')">☁ Drive</button>
+    <button class="chip-btn" id="chip-portal" onclick="sendVia('portal')">🔗 Portal link</button>
+  </div>`;
+  body.appendChild(strip);
+
+  const prompt = `You are a property manager at Wawa Group in Ghana. Write a 2-sentence professional owner statement commentary (plain text, no bullets, no markdown) for: Property: ${p.name}, Month: ${period}, Bookings: ${p.bookings.length}, Total income: USD ${c.totalIncUSD.toFixed(2)} + GHS ${c.totalIncGHS.toFixed(2)}, TWG fees: USD ${c.cogsUSD.toFixed(2)}, Expenses: GHS ${c.expGHS.toFixed(2)}, Net owner payout: USD ${c.ownerPayout.toFixed(2)}. Be warm, professional, and highlight performance.`;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key': ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{role:'user',content:prompt}] })
+    });
+    const data = await res.json();
+    const text = data.content?.find(c=>c.type==='text')?.text || '';
+    const el = document.getElementById('ai-txt');
+    if (el) { el.textContent = text; el.classList.remove('loading'); }
+  } catch {
+    const el = document.getElementById('ai-txt');
+    if (el) { el.textContent = `${p.name} had a strong ${period} with ${p.bookings.length} bookings and a total owner payout of ${fmtUSD(c.ownerPayout)}.`; el.classList.remove('loading'); }
+  }
+}
+
+function bgClose(e) { if(e.target===document.getElementById('modal-bg')) closeModal(); }
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+
+function downloadPDF() {
+  if (!activeProp) return;
+  const p = activeProp;
+  const c = computeProperty(p);
+  notify('📄 Opening print view…');
+  const w = window.open('', '_blank');
+  const _pdfPeriod = document.getElementById('period-sel')?.value || 'January 2026';
+
+  // Capture AI text if already generated
+  const _aiEl  = document.getElementById('ai-txt');
+  const _aiTxt = (_aiEl && !_aiEl.classList.contains('loading')) ? _aiEl.textContent.trim() : '';
+
+  // COGS rows
+  const _twgPct = (p.twgPct || 15) / 100;
+  const _cogsRows = p.bookings.map(b => {
+    const fu = b.usd > 0 ? (b.usd * _twgPct).toFixed(2) : '0.00';
+    const fg = b.ghs > 0 ? (b.ghs * _twgPct).toFixed(2) : '0.00';
+    return `<tr>
+      <td>TWG Service Fee</td>
+      <td>${b.guest}</td>
+      <td class="muted">${b.displayDate || b.stayDates || b.rawDate || ''}</td>
+      <td></td>
+      <td class="r neg">${b.usd > 0 ? '-$' + fu : '$0.00'}</td>
+      <td class="r neg">${b.ghs > 0 ? '-GHS' + fg : 'GHS0.00'}</td>
+    </tr>`;
+  }).join('');
+
+  w.document.write(`<!DOCTYPE html><html><head>
+  <meta charset="UTF-8"/>
+  <title>${p.name} — ${_pdfPeriod}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Work Sans',sans-serif;max-width:840px;margin:28px auto;color:#2c1f14;font-size:12px;padding:0 28px;background:white;line-height:1.55}
+
+    /* ── HEADER ── */
+    .stmt-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:16px;border-bottom:2px solid #2c1f14}
+    .prop-name{font-size:20px;font-weight:600;color:#2c1f14;text-align:right}
+    .period-sub{font-size:11px;color:#555;text-align:right;margin-top:3px}
+
+    /* ── SECTION HEADERS ── */
+    .sh{padding:7px 12px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:white;margin:0}
+    .sh1{background:#2c1f14}
+    .sh2{background:#4a3828}
+    .sh3{background:#3d2a18}
+    .sh4{background:#c9971a;color:#4a2e1a}
+
+    /* ── TABLES ── */
+    table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:0}
+    thead th{background:#ede6d8;padding:7px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#555;border-bottom:1px solid #dfd6c4}
+    thead th.r{text-align:right}
+    tbody td{padding:7px 12px;border-bottom:1px solid #ede6d8;color:#4a3828}
+    tbody td.r{text-align:right}
+    tbody td.muted{color:#555;font-size:11px}
+    tfoot td{padding:8px 12px;font-weight:700;background:#ede6d8;border-top:2px solid #dfd6c4;color:#2c1f14;font-size:11.5px}
+    tfoot td.r{text-align:right}
+    .chip{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;background:#e6edf8;color:#1a3560}
+    .chip.off{background:#fdf6dc;color:#b07d20}
+    .pos{color:#1a5436;font-weight:600}
+    .neg{color:#7a1f1f;font-weight:600}
+
+    /* ── NET SUMMARY ── */
+    .net-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid #ede6d8;font-size:12px;color:#2c1f14}
+    .net-row:last-child{border-bottom:none}
+    .nr-pair{display:flex;gap:28px}
+    .nr{font-size:11.5px}
+    .net-row.total{background:#2c1f14;color:white;font-weight:700;font-size:13px}
+    .net-row.total .nr,.net-row.total span{color:white}
+    .net-row.prefx{background:#4a3828;color:white;font-weight:700;font-size:12px}
+    .net-row.prefx .nr,.net-row.prefx span{color:white}
+    .net-row.payout{background:#c9971a;color:#4a2e1a;font-weight:700;font-size:14px}
+    .net-row.payout .nr,.net-row.payout span{color:#4a2e1a}
+    .fx-row{background:#ede6d8;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:11px;color:#555}
+    .fx-row b{color:#2c1f14}
+    .fx-row .fx-val{color:#7a1f1f;font-weight:600}
+
+    /* ── AI STRIP ── */
+    .ai-strip{background:#2c1f14;padding:14px 18px;border-radius:8px;margin:18px 0 6px}
+    .ai-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#c9971a;font-weight:700;margin-bottom:6px}
+    .ai-txt{font-size:12px;color:rgba(245,240,232,.85);line-height:1.65}
+
+    /* ── FOOTER ── */
+    .footer{margin-top:22px;font-size:10px;color:#666;text-align:center;padding-top:14px;border-top:1px solid #dfd6c4}
+
+    @media print {
+      body{margin:0;padding:14px}
+      @page{margin:12mm 14mm;size:A4}
+    }
+  </style></head><body>
+
+  <!-- HEADER -->
+  <div class="stmt-header">
+    <div style="font-weight:800;font-size:24px;letter-spacing:-1px;color:#2c1f14;line-height:1">wawa<span style="color:#c9971a;font-size:15px;vertical-align:super">●</span></div>
+    <div><div class="prop-name">${p.name}</div><div class="period-sub">${_pdfPeriod} · Owner Statement</div></div>
+  </div>
+
+  <!-- RENTAL INCOME -->
+  <div class="sh sh1">Rental Income</div>
+  <table>
+    <thead><tr>
+      <th>Guest</th><th>Stay Dates</th><th>Date</th><th>Channel</th><th class="r">USD</th><th class="r">GHS</th>
+    </tr></thead>
+    <tbody>
+      ${p.bookings.map(b => `<tr>
+        <td>${b.guest}</td>
+        <td class="muted">${b.stayDates || b.dates || ''}</td>
+        <td class="muted">${b.displayDate || b.stayDates || b.rawDate || ''}</td>
+        <td><span class="chip ${(b.platform || b.channel || '') === 'Offline' ? 'off' : ''}">${b.platform || b.channel || ''}</span></td>
+        <td class="r ${b.usd > 0 ? 'pos' : ''}">${b.usd > 0 ? '$' + b.usd.toFixed(2) : '$0.00'}</td>
+        <td class="r ${b.ghs > 0 ? 'pos' : ''}">${b.ghs > 0 ? 'GHS' + b.ghs.toFixed(2) : 'GHS0.00'}</td>
+      </tr>`).join('')}
+    </tbody>
+    <tfoot><tr>
+      <td colspan="4"><strong>TOTAL RENTAL INCOME</strong></td>
+      <td class="r pos"><strong>$${c.totalIncUSD.toFixed(2)}</strong></td>
+      <td class="r pos"><strong>GHS${c.totalIncGHS.toFixed(2)}</strong></td>
+    </tr></tfoot>
+  </table>
+
+  <!-- COGS -->
+  <div class="sh sh2">COGS — TWG Service Fee (${p.twgPct || 15}%)</div>
+  <table>
+    <thead><tr>
+      <th>Description</th><th>Guest</th><th>Date</th><th></th><th class="r">USD</th><th class="r">GHS</th>
+    </tr></thead>
+    <tbody>${_cogsRows}</tbody>
+    <tfoot><tr>
+      <td colspan="4"><strong>TOTAL COGS</strong></td>
+      <td class="r neg"><strong>-$${c.cogsUSD.toFixed(2)}</strong></td>
+      <td class="r neg"><strong>-GHS${c.cogsGHS.toFixed(2)}</strong></td>
+    </tr></tfoot>
+  </table>
+
+  <!-- EXPENSES -->
+  <div class="sh sh3">Expenses</div>
+  <table>
+    <thead><tr>
+      <th>Description</th><th>Date</th><th>Category</th><th></th><th class="r">USD</th><th class="r">GHS</th>
+    </tr></thead>
+    <tbody>
+      ${p.expenses.map(e => `<tr>
+        <td>${e.desc || e.description || ''}</td>
+        <td class="muted">${e.rawDate || e.date || ''}</td>
+        <td class="muted" style="font-size:10px">${e.category || e.cat || ''}</td>
+        <td></td>
+        <td class="r">$0.00</td>
+        <td class="r neg">${e.ghs > 0 ? '-GHS' + e.ghs.toFixed(2) : 'GHS0.00'}</td>
+      </tr>`).join('')}
+    </tbody>
+    <tfoot><tr>
+      <td colspan="4"><strong>TOTAL EXPENSES</strong></td>
+      <td class="r">$0.00</td>
+      <td class="r neg"><strong>-GHS${c.expGHS.toFixed(2)}</strong></td>
+    </tr></tfoot>
+  </table>
+
+  <!-- NET INCOME SUMMARY -->
+  <div class="sh sh4">Net Income Summary</div>
+  <div class="net-row">
+    <span>Total Revenue</span>
+    <span class="nr-pair"><span class="nr pos">$${c.totalIncUSD.toFixed(2)}</span><span class="nr pos">GHS${c.totalIncGHS.toFixed(2)}</span></span>
+  </div>
+  <div class="net-row">
+    <span>Total COGS</span>
+    <span class="nr-pair"><span class="nr neg">-$${c.cogsUSD.toFixed(2)}</span><span class="nr neg">-GHS${c.cogsGHS.toFixed(2)}</span></span>
+  </div>
+  <div class="net-row">
+    <span>Total Expenses</span>
+    <span class="nr-pair"><span class="nr">$0.00</span><span class="nr neg">-GHS${c.expGHS.toFixed(2)}</span></span>
+  </div>
+  <div class="net-row total">
+    <span>NET INCOME</span>
+    <span class="nr-pair"><span class="nr">$${c.netUSD.toFixed(2)}</span><span class="nr">${c.netGHS < 0 ? '-GHS' + (-c.netGHS).toFixed(2) : 'GHS' + c.netGHS.toFixed(2)}</span></span>
+  </div>
+  <div class="net-row prefx">
+    <span>OWNER PAYOUT (before FX)</span>
+    <span class="nr-pair"><span class="nr">$${c.netUSD.toFixed(2)}</span><span class="nr">${c.netGHS < 0 ? '-GHS' + (-c.netGHS).toFixed(2) : 'GHS' + c.netGHS.toFixed(2)}</span></span>
+  </div>
+  <div class="fx-row">
+    <span>GHS → USD conversion @ rate <b>${p.fxRate}</b> · ${p.fxDate}</span>
+    <span class="fx-val">-$${(-c.ghsConvUSD).toFixed(2)}</span>
+  </div>
+  <div class="net-row payout">
+    <span>TOTAL OWNER PAYOUT</span>
+    <span class="nr">$${c.ownerPayout.toFixed(2)}</span>
+  </div>
+
+  ${_aiTxt ? `<div class="ai-strip"><div class="ai-lbl">✦ AI Commentary</div><div class="ai-txt">${_aiTxt}</div></div>` : ''}
+
+  <div class="footer">Generated by Wawa Group Owner Portal &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})}</div>
+
+  <script>window.print()<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+function markSent() {
+  if(activeProp) { statuses[activeProp.id]='sent'; renderFilteredTable(); notify('✅ Marked as sent'); closeModal(); }
+}
+
+async function sendVia(ch) {
+  const btn = document.getElementById('chip-'+ch);
+  if(!btn||btn.classList.contains('sent')) return;
+  btn.classList.add('sending'); btn.textContent='⏳ Sending…';
+  await sleep(1200+Math.random()*600);
+  btn.classList.remove('sending'); btn.classList.add('sent');
+  const labels = {email:'📧 Email sent',whatsapp:'💬 WhatsApp sent',drive:'☁ Uploaded',portal:'🔗 Link sent'};
+  btn.textContent = labels[ch]||'Sent';
+  if(activeProp){statuses[activeProp.id]='sent';renderAdminTable();}
+  notify(labels[ch]||'Sent');
+}
+
+// ── OWNER VIEW ──
+async function renderOwnerView() {
+  const pid = document.getElementById('owner-sel').value;
+  const list = document.getElementById('owner-cards');
+  const periods = ['March 2026','February 2026','January 2026','December 2025','November 2025'];
+
+  // Show loading state
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink3)">Loading your statements…</div>';
+  document.getElementById('owner-net').textContent = '—';
+
+  // Fetch all periods for this owner
+  const results = [];
+  for (const per of periods) {
+    try {
+      const code = periodToCode(per);
+      const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${code}`);
+      const json = await res.json();
+      if (json.ok && json.data) results.push({ period: per, data: json.data });
+    } catch(e) { /* skip period */ }
+  }
+
+  if (results.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink3)">No data found for this property.</div>';
+    return;
+  }
+
+  // Use first result as current
+  const first = results[0].data;
+  currentProp = first;
+  PROPERTIES[pid] = first;
+  document.getElementById('topbar-name').textContent = first.name || pid;
+  document.getElementById('owner-hello').textContent = 'Welcome, ' + (first.name || pid);
+  document.getElementById('owner-prop').textContent = first.property || pid;
+  document.getElementById('owner-net').textContent = fmtUSD(first.ownerPayout || 0);
+  document.getElementById('owner-payout-lbl').textContent = 'Net payout · ' + results[0].period;
+
+  list.innerHTML = results.map(({ period, data }) => {
+    const st = statuses[pid] || 'pending';
+    const badge = st==='sent'
+      ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
+      : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
+    return `<div class="stmt-card" onclick="loadAndOpenStatement('${pid}','${periodToCode(period)}')">
+      <div><h3>${period}</h3><p>${(data.bookings||[]).length} bookings · ${data.property||pid}</p></div>
+      <div style="display:flex;align-items:center;gap:16px">${badge}<div class="stmt-card-amt">${fmtUSD(data.ownerPayout||0)}</div><span style="color:var(--ink3);font-size:13px">→</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadAndOpenStatement(pid, period) {
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${period}`);
+    const json = await res.json();
+    if (json.ok && json.data) {
+      PROPERTIES[pid] = json.data;
+      currentProp = json.data;
+      openStatement(pid);
+    }
+  } catch(e) { notify('Could not load statement: ' + e.message); }
+}
+
+// ── DYNAMIC FILTER STATE ────────────────────────────────────────────
+let filterPeriods = new Set(['January 2026']);
+let filterProps   = new Set(); // empty = all properties
+
+const PROP_NAMES = {
+  chelsea:'Chelsea Townhouse', oasis:'Oasis', lokko:'Lokko Serene',
+  broadway:'The Broadway', mona_lisa:'The Mona Lisa', eden:'The Eden',
+  urban_farmhouse:'The Urban Farmhouse', ocean_heights:'Ocean Heights', nshornaa:'Nshornaa'
+};
+
+// Close any open filter popups when clicking outside
+document.addEventListener('click', e => {
+  ['period','prop'].forEach(which => {
+    const wrap = document.getElementById('fp-wrap-' + which);
+    if (wrap && !wrap.contains(e.target)) {
+      const popup = document.getElementById('fp-popup-' + which);
+      if (popup) popup.style.display = 'none';
+      document.getElementById('fp-btn-' + which)?.classList.remove('open');
+    }
+  });
+});
+
+function toggleFilterDropdown(which) {
+  const other = which === 'period' ? 'prop' : 'period';
+  const popup  = document.getElementById('fp-popup-' + which);
+  const btn    = document.getElementById('fp-btn-' + which);
+  if (!popup) return;
+  const isOpen = popup.style.display !== 'none';
+  // close sibling
+  const otherPopup = document.getElementById('fp-popup-' + other);
+  if (otherPopup) otherPopup.style.display = 'none';
+  document.getElementById('fp-btn-' + other)?.classList.remove('open');
+  // toggle this
+  popup.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('open', !isOpen);
+}
+
+function togglePeriodFilter(label) {
+  // Never allow deselecting the last period
+  if (filterPeriods.has(label) && filterPeriods.size === 1) return;
+  if (filterPeriods.has(label)) filterPeriods.delete(label);
+  else filterPeriods.add(label);
+  // Sync hidden period-sel to primary (most recent) selected period
+  const primary = PERIOD_LABELS.find(l => filterPeriods.has(l)) || 'January 2026';
+  const sel = document.getElementById('period-sel');
+  if (sel) sel.value = primary;
+  // Ensure data loaded for all selected periods, then re-render both tabs
+  const sorted = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  _ensurePeriodsLoaded(sorted).then(() => {
+    renderFilteredTable();
+    if (document.getElementById('analytics-view').style.display !== 'none') renderAnalytics();
+  });
+  renderFilterPills();
+}
+
+function togglePropFilter(id) {
+  if (filterProps.has(id)) filterProps.delete(id);
+  else filterProps.add(id);
+  renderFilteredTable();
+  renderFilterPills();
+  if (document.getElementById('analytics-view').style.display !== 'none') renderAnalytics();
+}
+
+function clearPropFilter() {
+  filterProps.clear();
+  document.querySelectorAll('[data-prop]').forEach(cb => {
+    cb.checked = false;
+    cb.closest('.filter-popup-item')?.classList.remove('checked');
+  });
+  renderFilteredTable();
+  renderFilterPills();
+  const popup = document.getElementById('fp-popup-prop');
+  if (popup) popup.style.display = 'none';
+  document.getElementById('fp-btn-prop')?.classList.remove('open');
+}
+
+function _clearAllFilters() {
+  filterPeriods = new Set(['January 2026']);
+  filterProps.clear();
+  const sel = document.getElementById('period-sel');
+  if (sel) sel.value = 'January 2026';
+  renderFilteredTable();
+  renderFilterPills();
+  if (document.getElementById('analytics-view').style.display !== 'none') renderAnalytics();
+}
+
+function renderFilterPills() {
+  const row = document.getElementById('filter-pills-row');
+  if (!row) return;
+  const pills = [];
+  // Period pills — shown individually when multiple selected
+  if (filterPeriods.size > 1) {
+    PERIOD_LABELS.filter(l => filterPeriods.has(l)).forEach(p => {
+      const short = p.split(' ')[0].slice(0,3) + " '" + p.slice(-2);
+      pills.push(`<span class="filter-pill">${short}<span class="pill-x" onclick="togglePeriodFilter('${p}')">×</span></span>`);
+    });
+  }
+  // Property pills
+  filterProps.forEach(id => {
+    const name = PROP_NAMES[id] || id;
+    pills.push(`<span class="filter-pill">${name}<span class="pill-x" onclick="togglePropFilter('${id}')">×</span></span>`);
+  });
+
+  if (pills.length > 0) {
+    row.innerHTML = pills.join('') + `<button class="filter-clear" onclick="_clearAllFilters()">Clear all</button>`;
+    row.style.display = 'flex';
+  } else {
+    row.innerHTML = '';
+    row.style.display = 'none';
+  }
+
+  // Update period button label + badge
+  const sorted = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  const pLabel = sorted.length === 1
+    ? sorted[0].split(' ')[0].slice(0,3) + " '" + sorted[0].slice(-2)
+    : sorted.length + ' periods';
+  const fpLabelPeriod = document.getElementById('fp-label-period');
+  if (fpLabelPeriod) fpLabelPeriod.textContent = pLabel;
+  const fpBadgePeriod = document.getElementById('fp-badge-period');
+  if (fpBadgePeriod) { fpBadgePeriod.textContent = sorted.length; fpBadgePeriod.style.display = sorted.length > 1 ? '' : 'none'; }
+
+  // Update property button label + badge
+  const propLabel = filterProps.size === 0 ? 'All properties'
+    : filterProps.size === 1 ? (PROP_NAMES[[...filterProps][0]] || 'property')
+    : filterProps.size + ' properties';
+  const fpLabelProp = document.getElementById('fp-label-prop');
+  if (fpLabelProp) fpLabelProp.textContent = propLabel;
+  const fpBadgeProp = document.getElementById('fp-badge-prop');
+  if (fpBadgeProp) { fpBadgeProp.textContent = filterProps.size; fpBadgeProp.style.display = filterProps.size > 0 ? '' : 'none'; }
+
+  // Sync all checkboxes
+  document.querySelectorAll('[data-period]').forEach(cb => {
+    cb.checked = filterPeriods.has(cb.dataset.period);
+    cb.closest('.filter-popup-item')?.classList.toggle('checked', cb.checked);
+  });
+  document.querySelectorAll('[data-prop]').forEach(cb => {
+    cb.checked = filterProps.has(cb.dataset.prop);
+    cb.closest('.filter-popup-item')?.classList.toggle('checked', cb.checked);
+  });
+}
+
+async function _ensurePeriodsLoaded(labels) {
+  for (const label of labels) {
+    const code = periodToCode(label);
+    if (PERIOD_DATA[code]) continue;
+    try {
+      const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${code}`);
+      const json = await res.json();
+      if (json.ok) { PERIOD_DATA[code] = json.data; addLog(`Loaded ${label}.`, 'ok'); }
+    } catch(e) { addLog(`Could not load ${label}: ` + e.message, 'err'); }
+  }
+}
+
+function renderFilteredTable() {
+  const tbody = document.getElementById('admin-tbody');
+  if (!tbody) return;
+  const sortedPeriods = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  const multiPeriod   = sortedPeriods.length > 1;
+  const rows = [];
+
+  sortedPeriods.forEach(label => {
+    const code = periodToCode(label);
+    // Use PERIOD_DATA cache; fall back to PROPERTIES for the active period
+    let periodProps = PERIOD_DATA[code];
+    if (!periodProps || periodProps.length === 0) {
+      periodProps = Object.values(PROPERTIES).filter(p => p && p.id);
+    }
+    // Property filter
+    const filtered = filterProps.size > 0
+      ? periodProps.filter(p => filterProps.has(p.id))
+      : periodProps;
+    if (filtered.length === 0) return;
+
+    // Period separator row when multiple periods are shown
+    if (multiPeriod) {
+      rows.push(`<tr class="tbl-period-sep"><td colspan="9">${label}</td></tr>`);
+    }
+
+    const maxPayout = Math.max(...filtered.map(p => computeProperty(p).ownerPayout), 1);
+    const maxIncome = Math.max(...filtered.map(p => computeProperty(p).totalIncUSD), 1);
+
+    filtered.forEach(p => {
+      const c   = computeProperty(p);
+      const occ = computeOccupancyMetrics(p, code);
+      const st  = statuses[p.id] || 'pending';
+      const badge = st === 'sent'
+        ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
+        : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
+      const occPct   = occ.occupancy.toFixed(0);
+      const occClass = occ.occupancy >= 70 ? 'occ-high' : occ.occupancy >= 40 ? 'occ-mid' : 'occ-low';
+      const payBar   = Math.round((c.ownerPayout / maxPayout) * 100);
+      const incBar   = Math.round((c.totalIncUSD / maxIncome) * 100);
+      const bookings = (p.bookings || []).length;
+      rows.push(`<tr data-id="${p.id}" data-period="${code}">
+        <td>
+          <div class="prop-name-main">${p.name || p.id}</div>
+          <div class="prop-name-sub">${multiPeriod ? label : (p.fxDate || '')}</div>
+        </td>
+        <td>
+          <div style="font-weight:600;color:var(--ink)">${bookings}</div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:1px">${occ.totalNights} night${occ.totalNights!==1?'s':''}</div>
+          <span class="occ-pill ${occClass}" style="margin-top:3px;display:inline-block">${occPct}% occ.</span>
+        </td>
+        <td>
+          <div class="pos" style="font-weight:600">${fmtUSD(c.totalIncUSD)}</div>
+          <div class="mini-bar-wrap"><div class="mini-bar gold" style="width:${incBar}%"></div></div>
+        </td>
+        <td style="color:var(--ink2)">${fmtGHS(c.totalIncGHS)}</td>
+        <td class="neg" style="font-weight:600">−${fmtUSD(c.cogsUSD)}</td>
+        <td>
+          <div class="neg" style="font-weight:600">−${fmtGHS(c.expGHS)}</div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:1px">${(p.expenses||[]).length} item${(p.expenses||[]).length!==1?'s':''}</div>
+        </td>
+        <td>
+          <div class="pos" style="font-weight:700;font-size:13px">${fmtUSD(c.ownerPayout)}</div>
+          <div class="mini-bar-wrap"><div class="mini-bar green" style="width:${payBar}%"></div></div>
+          <div style="font-size:9px;color:var(--ink3);margin-top:3px">ADR ${fmtUSD(occ.adr)}/night</div>
+        </td>
+        <td id="st-${p.id}">${badge}</td>
+        <td><button class="btn-sm" onclick="openStatement('${p.id}')">View</button></td>
+      </tr>`);
+    });
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--ink3)">No data for selected filters — try loading data first.</td></tr>';
+  } else {
+    tbody.innerHTML = rows.join('');
+  }
+
+  // Update portfolio title
+  const periodStr = sortedPeriods.length === 1 ? sortedPeriods[0]
+    : sortedPeriods.map(l => l.split(' ')[0].slice(0,3) + " '" + l.slice(-2)).join(', ');
+  const propStr = filterProps.size === 0 ? '' : filterProps.size === 1
+    ? ' · ' + (PROP_NAMES[[...filterProps][0]] || '')
+    : ' · ' + filterProps.size + ' properties';
+  const pt = document.getElementById('portfolio-title');
+  if (pt) pt.textContent = 'Portfolio — ' + periodStr + propStr;
+
+  // Refresh dashboard stats from primary period data
+  const primaryCode = periodToCode(sortedPeriods[0] || 'January 2026');
+  const primaryData = PERIOD_DATA[primaryCode] || Object.values(PROPERTIES).filter(p => p && p.id);
+  if (primaryData.length > 0) updateDashboardStats(primaryData, primaryCode);
+}
+
+// Legacy aliases
+function applyFilters() { renderFilteredTable(); }
+function filterTable()  { renderFilteredTable(); }
+
+// ── NOTIFY ──
+function notify(msg) {
+  const el = document.getElementById('notif'); el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── ANALYTICS ────────────────────────────────────────────────────
+const CHART_COLORS = ['#c9971a','#4a2e1a','#1a5436','#1a3560','#7a5800','#9a8878','#e0aa20','#7a1f1f','#2c5f8a','#4a6741'];
+const CHART_BORDERS = ['#fff'];
+const _activeCharts = {};
+
+function showAdminTab(tab) {
+  document.getElementById('tab-statements').classList.toggle('on', tab === 'statements');
+  document.getElementById('tab-analytics').classList.toggle('on', tab === 'analytics');
+  document.getElementById('admin-view').style.display    = tab === 'statements' ? 'block' : 'none';
+  document.getElementById('analytics-view').style.display = tab === 'analytics'  ? 'block' : 'none';
+  if (tab === 'analytics') renderAnalytics();
+}
+
+function _destroyChart(id) {
+  if (_activeCharts[id]) { _activeCharts[id].destroy(); delete _activeCharts[id]; }
+}
+
+function _mkDonut(id, labels, values, currencyPrefix) {
+  _destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const total = values.reduce((a, b) => a + b, 0);
+  _activeCharts[id] = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: CHART_COLORS.slice(0, labels.length),
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Work Sans', size: 10 }, padding: 10, boxWidth: 10, color: '#4a3828' }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+              const val = currencyPrefix ? currencyPrefix + ctx.parsed.toFixed(2) : ctx.parsed;
+              return ` ${ctx.label}: ${val} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function _mkHBar(id, labels, datasets) {
+  _destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  _activeCharts[id] = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Work Sans', size: 10 }, padding: 10, boxWidth: 10, color: '#4a3828' }
+        },
+        tooltip: {
+          callbacks: { label: (ctx) => ` ${ctx.dataset.label}: $${ctx.parsed.x.toFixed(2)}` }
+        }
+      },
+      scales: {
+        x: {
+          stacked: false,
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { font: { family: 'Work Sans', size: 10 }, color: '#9a8878',
+            callback: (v) => '$' + v.toLocaleString() }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { family: 'Work Sans', size: 10 }, color: '#4a3828' }
+        }
+      }
+    }
+  });
+}
+
+function renderAnalytics() {
+  // ── Respect the shared filter state ──
+  // Primary period = most recent selected period
+  const primaryPeriod = PERIOD_LABELS.find(l => filterPeriods.has(l)) || 'January 2026';
+  const pCode         = periodToCode(primaryPeriod);
+
+  // Collect props for each selected period (merge by id, primary period wins)
+  const _allPeriodProps = {};
+  PERIOD_LABELS.filter(l => filterPeriods.has(l)).forEach(label => {
+    const code = periodToCode(label);
+    const src  = PERIOD_DATA[code] || (code === pCode ? Object.values(PROPERTIES) : []);
+    src.forEach(p => { if (p && p.id) _allPeriodProps[p.id] = _allPeriodProps[p.id] || p; });
+  });
+  // Override with freshest data from PROPERTIES for the primary period
+  Object.values(PROPERTIES).forEach(p => { if (p && p.id) _allPeriodProps[p.id] = p; });
+
+  // Apply property filter
+  let props = Object.values(_allPeriodProps).filter(p => p && p.id && Array.isArray(p.bookings));
+  if (filterProps.size > 0) props = props.filter(p => filterProps.has(p.id));
+
+  // Build a friendly label for the active filter
+  const sortedFilterPeriods = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  const periodLabel = sortedFilterPeriods.length === 1 ? sortedFilterPeriods[0]
+    : sortedFilterPeriods.map(l => l.split(' ')[0].slice(0,3) + " '" + l.slice(-2)).join(', ');
+  const propFilterLabel = filterProps.size > 0
+    ? ' · ' + (filterProps.size === 1 ? (PROP_NAMES[[...filterProps][0]] || '') : filterProps.size + ' properties')
+    : '';
+
+  const period    = primaryPeriod;
+  const container = document.getElementById('analytics-container');
+  if (!container) return;
+  if (props.length === 0) {
+    container.innerHTML = '<div style="padding:60px;text-align:center;color:var(--ink3);font-size:13px">No data for the active filter. Switch to <strong>Statements</strong> tab to load data first.</div>';
+    return;
+  }
+
+  // ── Aggregates ──
+  const propsSorted = [...props].sort((a,b) => computeProperty(b).ownerPayout - computeProperty(a).ownerPayout);
+  const propNames   = props.map(p => (p.name || p.id).replace(/^The /, ''));
+  const propPayouts = props.map(p => computeProperty(p).ownerPayout);
+  const propCogs    = props.map(p => computeProperty(p).cogsUSD);
+  const allChMap    = {};
+  props.forEach(p => (p.bookings||[]).forEach(b => {
+    const ch = b.platform || b.channel || 'Unknown';
+    allChMap[ch] = (allChMap[ch]||0) + (b.usd||0);
+  }));
+  const allChKeys = Object.keys(allChMap).sort((a,b) => allChMap[b]-allChMap[a]);
+
+  // ── YTD aggregates across PERIOD_DATA ──
+  let ytdIncome=0, ytdPayout=0, ytdFees=0, ytdBookings=0, ytdPeriods=0;
+  Object.values(PERIOD_DATA).forEach(periodProps => {
+    if (!Array.isArray(periodProps)) return;
+    ytdPeriods++;
+    periodProps.forEach(o => {
+      ytdIncome   += o.totalIncUSD || 0;
+      ytdPayout   += o.ownerPayout || computeProperty(o).ownerPayout || 0;
+      ytdFees     += o.cogsUSD     || 0;
+      ytdBookings += (o.bookings||[]).length;
+    });
+  });
+  const ytdAvgOcc = ytdPeriods > 0 ? (ytdBookings / (ytdPeriods * props.length * 30) * 100).toFixed(1) : '—';
+
+  // ── MoM trend data (respects property filter) ──
+  const trendLabels  = PERIOD_LABELS.slice().reverse();
+  const trendIncome  = trendLabels.map(l => {
+    const d = PERIOD_DATA[periodToCode(l)];
+    if (!d) return null;
+    const src = filterProps.size > 0 ? d.filter(o => filterProps.has(o.id)) : d;
+    return src.reduce((s,o)=>s+(o.totalIncUSD||0),0);
+  });
+  const trendPayout  = trendLabels.map(l => {
+    const d = PERIOD_DATA[periodToCode(l)];
+    if (!d) return null;
+    const src = filterProps.size > 0 ? d.filter(o => filterProps.has(o.id)) : d;
+    return src.reduce((s,o)=>s+(o.ownerPayout||computeProperty(o).ownerPayout||0),0);
+  });
+  const trendShort   = trendLabels.map(l => l.split(' ')[0].slice(0,3) + ' ' + l.split(' ')[1].slice(2));
+
+  // ── Performer rankings ──
+  const top3   = propsSorted.slice(0, 3);
+  const bottom = propsSorted[propsSorted.length - 1];
+  const maxPay = computeProperty(top3[0]).ownerPayout || 1;
+  const rankLabels = ['Gold', 'Silver', 'Bronze'];
+  const rankClass  = ['perf-gold', 'perf-silver', 'perf-bronze'];
+
+  container.innerHTML = `
+    <!-- FILTER CONTEXT BADGE -->
+    ${(filterProps.size > 0 || filterPeriods.size > 1) ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:9px 14px;background:var(--gold-pale);border:1px solid rgba(201,151,26,.35);border-radius:8px;font-size:11px;color:var(--ink2);">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;color:var(--gold)"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Showing: <strong>${periodLabel}${propFilterLabel}</strong></span>
+      <span style="margin-left:auto;color:var(--ink3);font-size:10px">Matches Statements filter</span>
+    </div>` : ''}
+
+    <!-- ① YTD SUMMARY STRIP -->
+    <div class="anl-section-title">Year-to-Date Summary (${ytdPeriods} periods loaded)</div>
+    <div class="ytd-strip">
+      <div class="ytd-cell"><div class="ytd-lbl">YTD Total Income</div><div class="ytd-val">$${ytdIncome.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="ytd-sub">Across all properties</div></div>
+      <div class="ytd-cell"><div class="ytd-lbl">YTD Owner Payouts</div><div class="ytd-val">$${ytdPayout.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="ytd-sub">Net after fees &amp; expenses</div></div>
+      <div class="ytd-cell"><div class="ytd-lbl">YTD TWG Fees</div><div class="ytd-val">$${ytdFees.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="ytd-sub">Management revenue</div></div>
+      <div class="ytd-cell"><div class="ytd-lbl">YTD Bookings</div><div class="ytd-val">${ytdBookings}</div><div class="ytd-sub">Total reservations</div></div>
+      <div class="ytd-cell"><div class="ytd-lbl">Est. Avg Occupancy</div><div class="ytd-val">${ytdAvgOcc}%</div><div class="ytd-sub">Portfolio average</div></div>
+    </div>
+
+    <!-- ② PERFORMER CARDS -->
+    <div class="anl-section-title">Performance Rankings — ${periodLabel}${propFilterLabel}</div>
+    <div class="perf-grid">
+      ${top3.map((p,i) => {
+        const c = computeProperty(p);
+        const occ = computeOccupancyMetrics(p, pCode);
+        const barW = Math.round((c.ownerPayout/maxPay)*100);
+        return `<div class="perf-card ${rankClass[i]}">
+          <div class="perf-rank">${rankLabels[i]} · #${i+1} by Payout</div>
+          <div class="perf-name">${p.name||p.id}</div>
+          <div class="perf-val">${fmtUSD(c.ownerPayout)}</div>
+          <div class="perf-sub">${(p.bookings||[]).length} bookings · ${occ.occupancy.toFixed(0)}% occ. · ADR ${fmtUSD(occ.adr)}/night</div>
+          <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${barW}%;background:${i===0?'var(--gold)':i===1?'#aaa':'#c67c3a'}"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="perf-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:20px">
+      ${(() => {
+        const c   = computeProperty(bottom);
+        const occ = computeOccupancyMetrics(bottom, pCode);
+        return `<div class="perf-card perf-bad">
+          <div class="perf-rank" style="color:var(--red)">Needs Attention · Lowest Payout</div>
+          <div class="perf-name">${bottom.name||bottom.id}</div>
+          <div class="perf-val red">${fmtUSD(c.ownerPayout)}</div>
+          <div class="perf-sub">${(bottom.bookings||[]).length} bookings · ${occ.occupancy.toFixed(0)}% occ. · RevPAN ${fmtUSD(occ.revpan)}</div>
+          <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.round((c.ownerPayout/maxPay)*100)}%;background:var(--red)"></div></div>
+        </div>`;
+      })()}
+      <div class="chart-card-wide" style="padding:14px 16px">
+        <div class="chart-col-title">Portfolio Occupancy · ${period}</div>
+        <div class="chart-col-sub">Estimated from booking night counts</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          ${props.map(p => {
+            const occ = computeOccupancyMetrics(p, pCode);
+            const cls = occ.occupancy>=70?'var(--green)':occ.occupancy>=40?'var(--gold)':'var(--red)';
+            return `<div style="display:flex;align-items:center;gap:8px">
+              <div style="width:110px;font-size:10px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(p.name||p.id).replace(/^The /,'')}</div>
+              <div style="flex:1;height:6px;background:var(--paper2);border-radius:3px">
+                <div style="width:${occ.occupancy.toFixed(0)}%;height:6px;background:${cls};border-radius:3px;transition:width .5s"></div>
+              </div>
+              <div style="font-size:10px;font-weight:700;color:${cls};min-width:32px;text-align:right">${occ.occupancy.toFixed(0)}%</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="chart-card-wide" style="padding:14px 16px">
+        <div class="chart-col-title">RevPAN &amp; ADR · ${period}</div>
+        <div class="chart-col-sub">Revenue per available night vs avg daily rate</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">
+          ${[...props].sort((a,b)=>computeOccupancyMetrics(b,pCode).revpan - computeOccupancyMetrics(a,pCode).revpan).map(p => {
+            const occ = computeOccupancyMetrics(p, pCode);
+            return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--paper2)">
+              <span style="color:var(--ink2)">${(p.name||p.id).replace(/^The /,'')}</span>
+              <span style="display:flex;gap:12px">
+                <span style="color:var(--green);font-weight:600">RevPAN ${fmtUSD(occ.revpan)}</span>
+                <span style="color:var(--ink3)">ADR ${fmtUSD(occ.adr)}</span>
+              </span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ MoM TREND -->
+    <div class="anl-section-title">Month-over-Month Trends</div>
+    <div class="trend-grid">
+      <div class="chart-card-wide">
+        <div class="chart-col-title">Portfolio Revenue &amp; Owner Payouts (USD)</div>
+        <div class="chart-col-sub">Across ${ytdPeriods} loaded periods — switch periods to load more</div>
+        <div style="height:220px"><canvas id="anl-trend-line"></canvas></div>
+      </div>
+      <div class="chart-card-wide">
+        <div class="chart-col-title">Portfolio Channel Mix</div>
+        <div class="chart-col-sub">Total USD by booking channel · ${period}</div>
+        <div style="height:220px"><canvas id="anl-donut-portfolio-ch"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card-wide" style="margin-bottom:20px">
+      <div class="chart-col-title">Net Payout vs TWG Fees by Property — ${period}</div>
+      <div class="chart-col-sub">Ranked comparison of owner payouts after TWG service fees</div>
+      <div style="height:${Math.max(180, props.length*38)}px"><canvas id="anl-bar-portfolio"></canvas></div>
+    </div>
+
+    <!-- ④ FX IMPACT ANALYSIS -->
+    <div class="anl-section-title">FX Impact Analysis — GHS → USD Conversion${propFilterLabel}</div>
+    <div class="fx-cards">
+      ${props.filter(p=>(p.expGHS||computeProperty(p).expGHS)>0||(p.totalIncGHS||computeProperty(p).totalIncGHS)>0).map(p => {
+        const c   = computeProperty(p);
+        const ref = 13; // reference rate for comparison
+        const actual = p.fxRate || 11;
+        const altConv = c.netGHS < 0 ? Math.abs(c.netGHS)/ref*-1 : c.netGHS/ref;
+        const diff = c.ghsConvUSD - altConv;
+        const diffColor = diff >= 0 ? 'var(--green)' : 'var(--red)';
+        return `<div class="fx-card">
+          <div class="fx-prop-name">${p.name||p.id}</div>
+          <div class="fx-line"><span style="color:var(--ink3)">GHS income</span><span>${fmtGHS(c.totalIncGHS)}</span></div>
+          <div class="fx-line"><span style="color:var(--ink3)">GHS expenses</span><span style="color:var(--red)">−${fmtGHS(c.expGHS)}</span></div>
+          <div class="fx-line"><span style="color:var(--ink3)">Net GHS</span><span style="font-weight:600">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></div>
+          <div class="fx-line"><span style="color:var(--ink3)">Actual rate</span><span style="font-weight:600">${actual} GHS/USD</span></div>
+          <div class="fx-line"><span style="color:var(--ink3)">Converted</span><span>${fmtUSD(Math.abs(c.ghsConvUSD))}</span></div>
+          <div class="fx-impact-row">
+            <span class="fx-impact-lbl">vs ref. rate (${ref})</span>
+            <span class="fx-impact-val" style="color:${diffColor}">${diff>=0?'+':''}${fmtUSD(diff)}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- ⑤ PER-PROPERTY BREAKDOWN -->
+    <div class="anl-section-title">Per-Property Booking &amp; Expense Detail — ${periodLabel}${propFilterLabel}</div>
+    ${props.map(p => _buildPropertyBlock(p, pCode)).join('')}
+  `;
+
+  // ── Render charts ──
+  _mkHBar('anl-bar-portfolio', propNames, [
+    { label:'Net Payout (USD)', data:propPayouts, backgroundColor:'#c9971a', borderRadius:4, borderSkipped:false },
+    { label:'TWG Fees (USD)',   data:propCogs,    backgroundColor:'#4a2e1a', borderRadius:4, borderSkipped:false }
+  ]);
+  _mkDonut('anl-donut-portfolio-ch', allChKeys, allChKeys.map(k=>allChMap[k]), '$');
+  _mkLine('anl-trend-line', trendShort, [
+    { label:'Total Income (USD)', data:trendIncome, borderColor:'#c9971a', backgroundColor:'rgba(201,151,26,.1)', tension:.35 },
+    { label:'Owner Payouts (USD)', data:trendPayout, borderColor:'#1a5436', backgroundColor:'rgba(26,84,54,.08)', tension:.35 }
+  ]);
+  props.forEach(p => _renderPropCharts(p));
+}
+
+function _mkLine(id, labels, datasets) {
+  _destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  _activeCharts[id] = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets: datasets.map(d => ({ ...d, fill:true, pointRadius:4, pointHoverRadius:6, borderWidth:2 })) },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{family:'Work Sans',size:10}, padding:10, boxWidth:10, color:'#4a3828' } },
+        tooltip: { callbacks:{ label: ctx => ` ${ctx.dataset.label}: $${(ctx.parsed.y||0).toFixed(2)}` } }
+      },
+      scales: {
+        x: { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'Work Sans',size:10},color:'#9a8878'} },
+        y: { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'Work Sans',size:10},color:'#9a8878', callback:v=>'$'+v.toLocaleString()} }
+      }
+    }
+  });
+}
+
+function _renderPropCharts(p) {
+  const chUSDMap={}, chCntMap={}, expMap={};
+  (p.bookings||[]).forEach(b => {
+    const ch = b.platform||b.channel||'Unknown';
+    chUSDMap[ch] = (chUSDMap[ch]||0)+(b.usd||0);
+    chCntMap[ch] = (chCntMap[ch]||0)+1;
+  });
+  (p.expenses||[]).forEach(e => {
+    const cat = e.category||e.cat||'Other';
+    expMap[cat] = (expMap[cat]||0)+(e.ghs||0);
+  });
+  const chU = Object.keys(chUSDMap).sort((a,b)=>chUSDMap[b]-chUSDMap[a]);
+  const chC = Object.keys(chCntMap).sort((a,b)=>chCntMap[b]-chCntMap[a]);
+  const exK = Object.keys(expMap).sort((a,b)=>expMap[b]-expMap[a]);
+  if (chU.length) _mkDonut(`anl-ch-usd-${p.id}`, chU, chU.map(k=>chUSDMap[k]), '$');
+  if (chC.length) _mkDonut(`anl-ch-cnt-${p.id}`, chC, chC.map(k=>chCntMap[k]), null);
+  if (exK.length) _mkDonut(`anl-exp-${p.id}`,    exK, exK.map(k=>expMap[k]),    'GHS');
+}
+
+function _buildPropertyBlock(p, pCode) {
+  const c   = computeProperty(p);
+  const occ = computeOccupancyMetrics(p, pCode);
+  const totalBookings = (p.bookings||[]).length;
+  const avgUSD   = totalBookings>0 ? c.totalIncUSD/totalBookings : 0;
+  const avgGHS   = totalBookings>0 ? c.totalIncGHS/totalBookings : 0;
+  const costRatio= c.totalIncUSD>0 ? ((c.cogsUSD+c.expUSD)/c.totalIncUSD*100) : 0;
+  const ratioClr = costRatio>30?'var(--red)':costRatio>20?'#7a5800':'var(--green)';
+  const chUSDMap = {};
+  (p.bookings||[]).forEach(b => { const ch=b.platform||b.channel||'Unknown'; chUSDMap[ch]=(chUSDMap[ch]||0)+(b.usd||0); });
+  const topCh  = Object.entries(chUSDMap).sort((a,b)=>b[1]-a[1])[0];
+  const hasExp = (p.expenses||[]).length > 0;
+  const occCls = occ.occupancy>=70?'occ-high':occ.occupancy>=40?'occ-mid':'occ-low';
+
+  return `
+    <div class="prop-chart-section">
+      <div class="prop-chart-header">
+        <span class="prop-chart-name">${p.name||p.id}</span>
+        <span class="prop-chart-payout">${fmtUSD(c.ownerPayout)} net payout &nbsp;·&nbsp; ${totalBookings} booking${totalBookings!==1?'s':''} &nbsp;·&nbsp; <span class="occ-pill ${occCls}" style="font-size:10px">${occ.occupancy.toFixed(0)}% occ.</span></span>
+      </div>
+      <div class="prop-chart-body">
+        <!-- ① Metrics -->
+        <div class="metrics-col">
+          <div class="metric-item"><div class="metric-lbl">Total Revenue</div><div class="metric-val">${fmtUSD(c.totalIncUSD)}</div><div class="metric-sub">${fmtGHS(c.totalIncGHS)}</div></div>
+          <div class="metric-item"><div class="metric-lbl">Occupancy</div><div class="metric-val" style="color:${occ.occupancy>=70?'var(--green)':occ.occupancy>=40?'var(--gold)':'var(--red)'}">${occ.occupancy.toFixed(1)}%</div><div class="metric-sub">${occ.totalNights} of ${occ.availNights} nights booked</div></div>
+          <div class="metric-item"><div class="metric-lbl">ADR</div><div class="metric-val">${fmtUSD(occ.adr)}</div><div class="metric-sub">${fmtGHS(occ.adrGHS)} per night</div></div>
+          <div class="metric-item"><div class="metric-lbl">RevPAN</div><div class="metric-val">${fmtUSD(occ.revpan)}</div><div class="metric-sub">Revenue / available night</div></div>
+          <div class="metric-item"><div class="metric-lbl">Top Channel</div><div class="metric-val" style="font-size:12px">${topCh?topCh[0]:'—'}</div><div class="metric-sub">${topCh?fmtUSD(topCh[1])+' revenue':''}</div></div>
+          <div class="metric-item"><div class="metric-lbl">Fee + Exp Ratio</div><div class="metric-val" style="color:${ratioClr}">${costRatio.toFixed(1)}%</div><div class="metric-sub">of USD income</div></div>
+        </div>
+        <!-- ② Channels -->
+        <div>
+          <div class="chart-col-title">Channels — Revenue (USD)</div>
+          <div class="chart-col-sub">${totalBookings} booking${totalBookings!==1?'s':''} · ${Object.keys(chUSDMap).length} channel${Object.keys(chUSDMap).length!==1?'s':''}</div>
+          <div class="canvas-wrap">${totalBookings?`<canvas id="anl-ch-usd-${p.id}"></canvas>`:'<div style="height:170px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px;background:var(--paper);border-radius:8px">No bookings</div>'}</div>
+          <div style="margin-top:16px"><div class="chart-col-title">Channels — Count</div><div class="canvas-wrap" style="height:140px">${totalBookings?`<canvas id="anl-ch-cnt-${p.id}"></canvas>`:''}</div></div>
+        </div>
+        <!-- ③ Expenses -->
+        <div>
+          <div class="chart-col-title">Expense Categories (GHS)</div>
+          <div class="chart-col-sub">${(p.expenses||[]).length} item${(p.expenses||[]).length!==1?'s':''} · ${fmtGHS(c.expGHS)} total</div>
+          ${hasExp?`<div class="canvas-wrap"><canvas id="anl-exp-${p.id}"></canvas></div>`:`<div style="height:170px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px;background:var(--paper);border-radius:8px">No expenses this period</div>`}
+          ${hasExp?`<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px">
+            ${(() => {
+              const CAT_COLORS = ['#c9971a','#1a5436','#1a3560','#7a1f1f','#4a2e1a','#2c5f8a','#7a5800','#9a8878','#4a6741'];
+              const groups = {};
+              (p.expenses||[]).forEach(e => {
+                const cat = e.category || e.cat || 'Other';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(e);
+              });
+              const sorted = Object.entries(groups)
+                .map(([cat, items]) => ({ cat, items, subtotal: items.reduce((s,e)=>s+(e.ghs||0),0) }))
+                .sort((a,b) => b.subtotal - a.subtotal);
+              return sorted.map(({cat, items, subtotal}, idx) => `
+                <div class="exp-group">
+                  <div class="exp-cat-hd">
+                    <span class="exp-cat-dot" style="background:${CAT_COLORS[idx % CAT_COLORS.length]}"></span>
+                    <span class="exp-cat-name">${cat}</span>
+                    <span class="exp-cat-count">${items.length} item${items.length!==1?'s':''}</span>
+                    <span class="exp-cat-amt">−${fmtGHS(subtotal)}</span>
+                  </div>
+                  <div class="exp-cat-items">
+                    ${items.map(e=>`<div class="exp-cat-item">
+                      <span>${e.desc||e.description||'—'}</span>
+                      <span style="color:var(--red);font-weight:600">${e.ghs>0?'−'+fmtGHS(e.ghs):'GHS0.00'}</span>
+                    </div>`).join('')}
+                  </div>
+                </div>`).join('');
+            })()}
+            <div class="exp-total"><span>Total Expenses</span><span style="color:var(--red)">−${fmtGHS(c.expGHS)}</span></div>
+          </div>`:''}
+        </div>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
