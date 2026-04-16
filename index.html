@@ -341,6 +341,57 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
 .filter-clear{font-size:11px;color:var(--ink3);cursor:pointer;padding:2px 0;transition:color .15s;background:none;border:none;font-family:'Work Sans',sans-serif;}
 .filter-clear:hover{color:var(--red);}
 .tbl-period-sep td{background:var(--paper2);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);padding:6px 14px;border-bottom:1px solid var(--paper3);}
+
+/* ── VARIANCE ALERTS ── */
+.alert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px;}
+.alert-card{background:white;border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);border:1.5px solid var(--paper3);display:flex;flex-direction:column;gap:4px;}
+.alert-card.up{border-color:var(--green);background:var(--green-bg);}
+.alert-card.dn{border-color:var(--red);background:var(--red-bg);}
+.alert-icon{font-size:18px;line-height:1;}
+.alert-prop{font-size:12px;font-weight:700;color:var(--ink);}
+.alert-change{font-size:15px;font-weight:700;}
+.alert-card.up .alert-change{color:var(--green);}
+.alert-card.dn .alert-change{color:var(--red);}
+
+/* ── OWNER YTD STRIP ── */
+.owner-ytd-strip{background:linear-gradient(135deg,#2c1f14,#3d2510);border-radius:var(--r);padding:16px 22px;margin-bottom:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+.owner-ytd-cell{padding:0 14px;border-left:1px solid rgba(201,151,26,.18);}
+.owner-ytd-cell:first-child{border-left:none;padding-left:0;}
+.owner-ytd-cell .ytd-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:rgba(246,243,237,.32);font-weight:700;margin-bottom:5px;}
+.owner-ytd-cell .ytd-val{font-size:17px;font-weight:700;color:var(--gold);}
+.owner-ytd-cell .ytd-sub{font-size:10px;color:rgba(246,243,237,.28);margin-top:2px;}
+
+/* ── OWNER ANALYTICS ── */
+#owner-analytics{margin-top:20px;}
+.owner-cmp-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--paper3);}
+.owner-cmp-table th{background:var(--paper2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
+.owner-cmp-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--paper2);color:var(--ink2);}
+.owner-cmp-table tr:last-child td{border-bottom:none;}
+
+/* ── AUDIT LOG ── */
+#audit-view{display:none;padding:28px 32px;max-width:1280px;margin:0 auto;}
+.audit-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--paper3);}
+.audit-table th{background:var(--paper2);padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
+.audit-table td{padding:9px 14px;font-size:11.5px;border-bottom:1px solid var(--paper2);color:var(--ink2);}
+.audit-table tr:last-child td{border-bottom:none;}
+.audit-table .ats{font-size:10px;color:var(--ink3);white-space:nowrap;}
+.audit-table .aact{font-weight:700;color:var(--ink);font-size:11px;}
+
+/* ── VERIFY PANEL ── */
+.verify-panel-hd{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;}
+.verify-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--paper3);}
+.verify-table th{background:var(--paper2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
+.verify-table td{padding:8px 12px;font-size:12px;border-bottom:1px solid var(--paper2);color:var(--ink2);}
+.verify-table tr:last-child td{border-bottom:none;}
+.verify-match{color:var(--green);font-weight:700;}
+.verify-diff{color:var(--red);font-weight:700;}
+
+/* ── SETTINGS MODAL ── */
+.settings-modal{background:var(--paper);border-radius:16px;width:640px;max-width:100%;box-shadow:var(--shadow-lg);animation:fadeUp .28s ease both;margin:auto;}
+.settings-section{padding:18px 24px;border-bottom:1px solid var(--paper3);}
+.settings-section:last-child{border-bottom:none;}
+.settings-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);margin-bottom:14px;}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 </style>
 </head>
 <body>
@@ -385,6 +436,7 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
     <div class="topbar-logo"><img src="data:image/png;base64,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" alt="wawa." style="height:44px;display:block;"></div>
     <div class="topbar-right">
       <div class="topbar-user">Signed in as <b id="topbar-name">—</b></div>
+      <button class="btn-logout" onclick="openSettings()">⚙ Settings</button>
       <button class="btn-logout" onclick="logout()">Sign out</button>
     </div>
   </div>
@@ -393,6 +445,7 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
   <div class="admin-sub-nav" id="admin-sub-nav">
     <button class="view-tab on" id="tab-statements" onclick="showAdminTab('statements')">&#9776; Statements</button>
     <button class="view-tab" id="tab-analytics" onclick="showAdminTab('analytics')">&#9685; Analytics</button>
+    <button class="view-tab" id="tab-audit" onclick="showAdminTab('audit')">📋 Audit Log</button>
   </div>
 
   <!-- ADMIN -->
@@ -487,6 +540,7 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
       </div>
 
       <button class="btn-run" id="run-btn" onclick="runStatements()"><span id="run-icon">▶</span> Generate statements</button>
+      <button class="btn-run" style="background:var(--blue);color:white" onclick="runHostawayVerify()">🔍 Verify</button>
       <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
         <div class="prog-wrap" id="prog-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
         <div class="run-lbl" id="run-lbl">Initialising…</div>
@@ -513,6 +567,8 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
         <tbody id="admin-tbody"></tbody>
       </table>
     </div>
+    <!-- Hostaway Verify Panel -->
+    <div id="verify-panel" style="display:none;margin-top:16px;"></div>
 
     <!-- Activity Log -->
     <div class="log" id="log-panel" style="margin-top:16px;">
@@ -541,8 +597,10 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
       <div><h2 id="owner-hello">Welcome back</h2><p id="owner-prop">Your property</p></div>
       <div style="text-align:right"><div class="owner-payout" id="owner-net">—</div><div class="payout-lbl" id="owner-payout-lbl">Net payout</div></div>
     </div>
+    <div id="owner-ytd"></div>
     <div class="sec-title" style="margin-bottom:12px">Statements</div>
     <div class="stmt-cards" id="owner-cards"></div>
+    <div id="owner-analytics"></div>
   </div>
 
   <!-- ANALYTICS VIEW -->
@@ -551,6 +609,48 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
     <div class="page-desc">Visual breakdown of bookings, channels, and expenses per property for the selected period.</div>
     <div id="analytics-container">
       <div style="padding:40px;text-align:center;color:var(--ink3)">Loading data — switch to Statements tab first to load a period, then return here.</div>
+    </div>
+  </div>
+
+  <!-- AUDIT LOG VIEW -->
+  <div id="audit-view" style="display:none;padding:28px 32px;max-width:1280px;margin:0 auto;"></div>
+</div>
+
+<!-- ── SETTINGS MODAL ── -->
+<div class="modal-bg" id="settings-modal-bg" onclick="bgCloseSettings(event)">
+  <div class="settings-modal">
+    <div class="modal-hd">
+      <div><h2>⚙ Settings</h2><p id="settings-sub">API keys &amp; delivery configuration</p></div>
+      <button class="modal-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Email (SendGrid)</div>
+      <div class="settings-grid">
+        <div class="field"><label>SendGrid API Key</label><input type="password" id="sg-key-input" placeholder="SG.xxxxxxxx"/></div>
+        <div class="field"><label>From Email</label><input type="email" id="sg-from-input" placeholder="statements@wawagroup.com"/></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">WhatsApp Business API (Meta)</div>
+      <div class="settings-grid">
+        <div class="field"><label>Phone Number ID</label><input type="text" id="wa-phone-input" placeholder="1234567890"/></div>
+        <div class="field"><label>Access Token</label><input type="password" id="wa-token-input" placeholder="EAAx…"/></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Hostaway</div>
+      <div class="settings-grid">
+        <div class="field"><label>Hostaway API Key</label><input type="password" id="ha-key-input" placeholder="ha_…"/></div>
+        <div class="field"><label>Account ID</label><input type="text" id="ha-account-input" value="79226"/></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Owner Emails &amp; WhatsApp Numbers</div>
+      <div id="owner-contacts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+    </div>
+    <div style="padding:16px 24px;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn-act btn-gold" onclick="saveSettings()">Save Settings</button>
+      <button class="btn-act btn-ghost" onclick="closeSettings()">Cancel</button>
     </div>
   </div>
 </div>
@@ -574,6 +674,29 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxE5IJVyO6AINKS
 
 // ── ANTHROPIC API KEY ─────────────────────────────────────────────
 const ANTHROPIC_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your key
+
+// ── EMAIL / WA / HOSTAWAY CONSTANTS ──────────────────────────────
+let SENDGRID_API_KEY  = ''; // Set in Settings
+let SG_FROM_EMAIL     = 'statements@wawagroup.com';
+let WA_PHONE_NUMBER_ID = ''; // WhatsApp Business API
+let WA_ACCESS_TOKEN    = ''; // Meta WA token
+let HOSTAWAY_KEY       = '';
+const HOSTAWAY_ACCOUNT_ID = '79226';
+const OWNER_EMAILS = {}; // { propId: 'email@example.com' }
+const OWNER_WA     = {}; // { propId: '+1234567890' }
+
+// ── STATEMENT VERSIONING ──────────────────────────────────────────
+const STATEMENT_VERSIONS = {}; // keyed by propId_periodCode
+
+// ── AUDIT LOG ────────────────────────────────────────────────────
+const AUDIT_LOG = [];
+
+function auditLog(action, detail) {
+  const entry = { ts: new Date().toISOString(), action, detail, user: 'Admin' };
+  AUDIT_LOG.push(entry);
+  try { localStorage.setItem('wawa_audit', JSON.stringify(AUDIT_LOG.slice(-200))); } catch(e) {}
+  addLog(`[AUDIT] ${action}: ${detail}`, 'info');
+}
 
 // ── MULTI-PERIOD DATA STORE ───────────────────────────────────────
 const PERIOD_DATA   = {};  // { '2026-01': [props…], … }
@@ -753,6 +876,7 @@ function setRole(r) {
 function login() {
   document.getElementById('auth').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  auditLog('LOGIN', role);
   if (role === 'admin') {
     document.getElementById('topbar-name').textContent = 'Admin';
     document.getElementById('admin-sub-nav').style.display = 'block';
@@ -774,10 +898,12 @@ function logout() {
   document.getElementById('admin-view').style.display = 'none';
   document.getElementById('admin-sub-nav').style.display = 'none';
   document.getElementById('analytics-view').style.display = 'none';
+  document.getElementById('audit-view').style.display = 'none';
   document.getElementById('owner-view').style.display = 'none';
   // reset tab state
   document.getElementById('tab-statements').classList.add('on');
   document.getElementById('tab-analytics').classList.remove('on');
+  document.getElementById('tab-audit').classList.remove('on');
 }
 
 // ── ADMIN TABLE ──
@@ -857,7 +983,28 @@ async function runStatements() {
   Object.keys(PROPERTIES).forEach(k => statuses[k]='sent');
   renderFilteredTable();
   const propCount = Object.keys(PROPERTIES).length;
+  // ── Statement Versioning ──
+  const periodCode = periodToCode(document.getElementById('period-sel').value || 'January 2026');
+  const periodLabel = document.getElementById('period-sel').value || 'January 2026';
+  Object.keys(PROPERTIES).forEach(k => {
+    const key = k + '_' + periodCode;
+    STATEMENT_VERSIONS[key] = {
+      version: (STATEMENT_VERSIONS[key]?.version || 0) + 1,
+      generatedAt: new Date().toISOString(),
+      generatedBy: 'Admin'
+    };
+  });
   addLog(`All ${propCount} statements generated and dispatched.`, 'ok');
+  auditLog('STATEMENTS_RUN', periodLabel + ' · ' + propCount + ' properties');
+  // ── Drive Archive ──
+  addLog('Archiving statements to Google Drive…', 'info');
+  try {
+    await fetch(APPS_SCRIPT_URL + `?action=archive&period=${periodCode}&count=${propCount}`);
+    addLog('Statements archived to Drive: Wawa Statements/' + periodLabel, 'ok');
+    auditLog('DRIVE_ARCHIVE', periodLabel + ' · ' + propCount + ' files');
+  } catch(e) {
+    addLog('Drive archive failed: ' + e.message, 'err');
+  }
   document.getElementById('run-lbl').textContent = `✓ Complete — ${propCount} statements sent`;
   btn.disabled = false; btn.innerHTML = '▶ Generate statements';
   setTimeout(() => { document.getElementById('prog-wrap').style.display='none'; document.getElementById('run-lbl').style.display='none'; }, 4000);
@@ -898,7 +1045,10 @@ async function openStatement(pid, preloaded) {
   const c = computeProperty(activeProp);
   const _activePeriod = document.getElementById('period-sel')?.value || 'January 2026';
   document.getElementById('modal-title').textContent = activeProp.name + ' — ' + _activePeriod;
-  document.getElementById('modal-sub').textContent = (activeProp.bookings||[]).length + ' bookings · TWG fee ' + (activeProp.twgPct||15) + '%';
+  const vKey = pid + '_' + periodToCode(_activePeriod);
+  const vInfo = STATEMENT_VERSIONS[vKey];
+  const vBadge = vInfo ? ` · v${vInfo.version} · ${new Date(vInfo.generatedAt).toLocaleString()}` : ' · Draft';
+  document.getElementById('modal-sub').textContent = (activeProp.bookings||[]).length + ' bookings · TWG fee ' + (activeProp.twgPct||15) + '%' + vBadge;
   document.getElementById('modal-body').innerHTML = buildStatement(activeProp, c, _activePeriod);
   document.getElementById('modal-bg').classList.add('open');
   fetchAI(activeProp, c, _activePeriod);
@@ -1017,6 +1167,7 @@ async function fetchAI(p, c, period) {
   <div class="modal-actions">
     <button class="btn-act btn-dark" onclick="downloadPDF()">⬇ Download PDF</button>
     <button class="btn-act btn-gold" onclick="markSent()">✓ Mark as sent</button>
+    <button class="btn-act btn-ghost" onclick="downloadAnnualPDF('${p.id}')">📊 Annual Tax Export</button>
     <button class="btn-act btn-ghost" onclick="closeModal()">Close</button>
   </div>
   <div class="send-chips">
@@ -1053,6 +1204,9 @@ function downloadPDF() {
   notify('📄 Opening print view…');
   const w = window.open('', '_blank');
   const _pdfPeriod = document.getElementById('period-sel')?.value || 'January 2026';
+  auditLog('PDF_DOWNLOADED', p.name + ' · ' + _pdfPeriod);
+  const _vKey = p.id + '_' + periodToCode(_pdfPeriod);
+  const _vInfo = STATEMENT_VERSIONS[_vKey];
 
   // Capture AI text if already generated
   const _aiEl  = document.getElementById('ai-txt');
@@ -1235,7 +1389,7 @@ function downloadPDF() {
 
   ${_aiTxt ? `<div class="ai-strip"><div class="ai-lbl">✦ AI Commentary</div><div class="ai-txt">${_aiTxt}</div></div>` : ''}
 
-  <div class="footer">Generated by Wawa Group Owner Portal &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})}</div>
+  <div class="footer">Generated by Wawa Group Owner Portal &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})} &nbsp;·&nbsp; Version ${_vInfo?.version || 'Draft'} &nbsp;·&nbsp; Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; Issued by Wawa Group</div>
 
   <script>window.print()<\/script>
   </body></html>`);
@@ -1243,18 +1397,54 @@ function downloadPDF() {
 }
 
 function markSent() {
-  if(activeProp) { statuses[activeProp.id]='sent'; renderFilteredTable(); notify('✅ Marked as sent'); closeModal(); }
+  if(activeProp) {
+    statuses[activeProp.id]='sent';
+    renderFilteredTable();
+    auditLog('MARKED_SENT', activeProp.name);
+    notify('✅ Marked as sent');
+    closeModal();
+  }
 }
 
 async function sendVia(ch) {
   const btn = document.getElementById('chip-'+ch);
   if(!btn||btn.classList.contains('sent')) return;
   btn.classList.add('sending'); btn.textContent='⏳ Sending…';
-  await sleep(1200+Math.random()*600);
+
+  // Real SendGrid call if key set
+  if (ch === 'email' && SENDGRID_API_KEY && activeProp && OWNER_EMAILS[activeProp.id]) {
+    try {
+      await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + SENDGRID_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: OWNER_EMAILS[activeProp.id] }] }],
+          from: { email: SG_FROM_EMAIL },
+          subject: `Your Owner Statement — ${activeProp.name}`,
+          content: [{ type: 'text/plain', value: `Dear Owner,\n\nPlease find your statement attached.\n\nWawa Group` }]
+        })
+      });
+    } catch(e) { addLog('SendGrid error: ' + e.message, 'err'); }
+  } else if (ch === 'whatsapp' && WA_ACCESS_TOKEN && WA_PHONE_NUMBER_ID && activeProp && OWNER_WA[activeProp.id]) {
+    try {
+      await fetch(`https://graph.facebook.com/v18.0/${WA_PHONE_NUMBER_ID}/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + WA_ACCESS_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp', to: OWNER_WA[activeProp.id],
+          type: 'text', text: { body: `Your ${activeProp.name} statement is ready on the Wawa owner portal.` }
+        })
+      });
+    } catch(e) { addLog('WhatsApp API error: ' + e.message, 'err'); }
+  } else {
+    await sleep(1200+Math.random()*600);
+  }
+
   btn.classList.remove('sending'); btn.classList.add('sent');
   const labels = {email:'📧 Email sent',whatsapp:'💬 WhatsApp sent',drive:'☁ Uploaded',portal:'🔗 Link sent'};
   btn.textContent = labels[ch]||'Sent';
   if(activeProp){statuses[activeProp.id]='sent';renderAdminTable();}
+  auditLog('SENT_VIA_' + ch.toUpperCase(), activeProp?.name || '');
   notify(labels[ch]||'Sent');
 }
 
@@ -1290,9 +1480,28 @@ async function renderOwnerView() {
   PROPERTIES[pid] = first;
   document.getElementById('topbar-name').textContent = first.name || pid;
   document.getElementById('owner-hello').textContent = 'Welcome, ' + (first.name || pid);
-  document.getElementById('owner-prop').textContent = first.property || pid;
+  // Occupancy pill on hero
+  const latestCode = periodToCode(results[0].period);
+  const occData = computeOccupancyMetrics(first, latestCode);
+  const occCls = occData.occupancy >= 70 ? 'occ-high' : occData.occupancy >= 40 ? 'occ-mid' : 'occ-low';
+  document.getElementById('owner-prop').innerHTML = (first.property || pid) + ` <span class="occ-pill ${occCls}" style="margin-left:6px">${occData.occupancy.toFixed(0)}% occ.</span>`;
   document.getElementById('owner-net').textContent = fmtUSD(first.ownerPayout || 0);
   document.getElementById('owner-payout-lbl').textContent = 'Net payout · ' + results[0].period;
+
+  // ── YTD Strip ──
+  const ytdEarned   = results.reduce((s, r) => s + (r.data.ownerPayout || 0), 0);
+  const ytdBookings = results.reduce((s, r) => s + (r.data.bookings || []).length, 0);
+  const bestMonthR  = results.reduce((best, r) => (r.data.ownerPayout || 0) > (best.data.ownerPayout || 0) ? r : best, results[0]);
+  const avgMonthly  = results.length > 0 ? ytdEarned / results.length : 0;
+  const ytdEl = document.getElementById('owner-ytd');
+  if (ytdEl) {
+    ytdEl.innerHTML = `<div class="owner-ytd-strip">
+      <div class="owner-ytd-cell"><div class="ytd-lbl">YTD Total Earned</div><div class="ytd-val">${fmtUSD(ytdEarned)}</div><div class="ytd-sub">Net owner payouts</div></div>
+      <div class="owner-ytd-cell"><div class="ytd-lbl">YTD Bookings</div><div class="ytd-val">${ytdBookings}</div><div class="ytd-sub">Across ${results.length} periods</div></div>
+      <div class="owner-ytd-cell"><div class="ytd-lbl">Best Month</div><div class="ytd-val">${bestMonthR.period.split(' ')[0].slice(0,3)}</div><div class="ytd-sub">${fmtUSD(bestMonthR.data.ownerPayout || 0)}</div></div>
+      <div class="owner-ytd-cell"><div class="ytd-lbl">Avg Monthly Payout</div><div class="ytd-val">${fmtUSD(avgMonthly)}</div><div class="ytd-sub">Over ${results.length} months</div></div>
+    </div>`;
+  }
 
   list.innerHTML = results.map(({ period, data }) => {
     const st = statuses[pid] || 'pending';
@@ -1304,6 +1513,50 @@ async function renderOwnerView() {
       <div style="display:flex;align-items:center;gap:16px">${badge}<div class="stmt-card-amt">${fmtUSD(data.ownerPayout||0)}</div><span style="color:var(--ink3);font-size:13px">→</span></div>
     </div>`;
   }).join('');
+
+  // ── Owner Analytics: Income Chart + Period Comparison Table ──
+  const anlEl = document.getElementById('owner-analytics');
+  if (anlEl && results.length > 0) {
+    const revResults = [...results].reverse();
+    anlEl.innerHTML = `
+      <div class="sec-title" style="margin-top:24px;margin-bottom:12px">Income History</div>
+      <div class="chart-card-wide" style="margin-bottom:20px">
+        <div class="chart-col-title">Monthly Payouts (USD)</div>
+        <div class="chart-col-sub">Across ${results.length} loaded period${results.length!==1?'s':''}</div>
+        <div style="height:200px"><canvas id="owner-income-chart"></canvas></div>
+      </div>
+      <div class="sec-title" style="margin-bottom:10px">Period Comparison</div>
+      <table class="owner-cmp-table">
+        <thead><tr><th>Period</th><th>Bookings</th><th>Income USD</th><th>Payout</th><th>vs Previous</th></tr></thead>
+        <tbody>
+          ${results.map(({ period, data }, idx) => {
+            const prev = results[idx + 1];
+            const curPay = data.ownerPayout || 0;
+            const prevPay = prev ? (prev.data.ownerPayout || 0) : null;
+            const diff = prevPay !== null ? curPay - prevPay : null;
+            const diffPct = prevPay && prevPay !== 0 ? ((diff / prevPay) * 100).toFixed(1) : null;
+            const diffHtml = diff !== null
+              ? `<span style="color:${diff>=0?'var(--green)':'var(--red)'};font-weight:600">${diff>=0?'▲':'▼'} ${diffPct}%</span>`
+              : '<span style="color:var(--ink3)">—</span>';
+            return `<tr>
+              <td style="font-weight:600">${period}</td>
+              <td>${(data.bookings||[]).length}</td>
+              <td class="pos">${fmtUSD(data.totalIncUSD || 0)}</td>
+              <td class="pos" style="font-weight:700">${fmtUSD(curPay)}</td>
+              <td>${diffHtml}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+    // Render bar chart after DOM insertion
+    setTimeout(() => {
+      _mkBar('owner-income-chart',
+        revResults.map(r => r.period.split(' ')[0].slice(0,3) + " '" + r.period.slice(-2)),
+        [{ label:'Net Payout (USD)', data: revResults.map(r => r.data.ownerPayout || 0),
+           backgroundColor:'#c9971a', borderRadius:4, borderSkipped:false }]
+      );
+    }, 50);
+  }
 }
 
 async function loadAndOpenStatement(pid, period) {
@@ -1567,6 +1820,25 @@ function renderFilteredTable() {
 function applyFilters() { renderFilteredTable(); }
 function filterTable()  { renderFilteredTable(); }
 
+// ── RESTORE FROM LOCALSTORAGE ──────────────────────────────────
+try {
+  const saved = localStorage.getItem('wawa_audit');
+  if (saved) AUDIT_LOG.push(...JSON.parse(saved));
+} catch(e) {}
+try {
+  const savedSettings = localStorage.getItem('wawa_settings');
+  if (savedSettings) {
+    const s = JSON.parse(savedSettings);
+    if (s.SENDGRID_API_KEY)  SENDGRID_API_KEY   = s.SENDGRID_API_KEY;
+    if (s.SG_FROM_EMAIL)     SG_FROM_EMAIL      = s.SG_FROM_EMAIL;
+    if (s.WA_PHONE_NUMBER_ID) WA_PHONE_NUMBER_ID = s.WA_PHONE_NUMBER_ID;
+    if (s.WA_ACCESS_TOKEN)   WA_ACCESS_TOKEN    = s.WA_ACCESS_TOKEN;
+    if (s.HOSTAWAY_KEY)      HOSTAWAY_KEY       = s.HOSTAWAY_KEY;
+    if (s.OWNER_EMAILS) Object.assign(OWNER_EMAILS, s.OWNER_EMAILS);
+    if (s.OWNER_WA)     Object.assign(OWNER_WA, s.OWNER_WA);
+  }
+} catch(e) {}
+
 // ── NOTIFY ──
 function notify(msg) {
   const el = document.getElementById('notif'); el.textContent=msg; el.classList.add('show');
@@ -1581,9 +1853,12 @@ const _activeCharts = {};
 function showAdminTab(tab) {
   document.getElementById('tab-statements').classList.toggle('on', tab === 'statements');
   document.getElementById('tab-analytics').classList.toggle('on', tab === 'analytics');
-  document.getElementById('admin-view').style.display    = tab === 'statements' ? 'block' : 'none';
-  document.getElementById('analytics-view').style.display = tab === 'analytics'  ? 'block' : 'none';
+  document.getElementById('tab-audit').classList.toggle('on', tab === 'audit');
+  document.getElementById('admin-view').style.display      = tab === 'statements' ? 'block' : 'none';
+  document.getElementById('analytics-view').style.display  = tab === 'analytics'  ? 'block' : 'none';
+  document.getElementById('audit-view').style.display      = tab === 'audit'       ? 'block' : 'none';
   if (tab === 'analytics') renderAnalytics();
+  if (tab === 'audit') renderAuditView();
 }
 
 function _destroyChart(id) {
@@ -1769,6 +2044,9 @@ function renderAnalytics() {
       <div class="ytd-cell"><div class="ytd-lbl">Est. Avg Occupancy</div><div class="ytd-val">${ytdAvgOcc}%</div><div class="ytd-sub">Portfolio average</div></div>
     </div>
 
+    <!-- ① b VARIANCE ALERTS MOUNT -->
+    <div id="variance-alerts-mount"></div>
+
     <!-- ② PERFORMER CARDS -->
     <div class="anl-section-title">Performance Rankings — ${periodLabel}${propFilterLabel}</div>
     <div class="perf-grid">
@@ -1882,6 +2160,10 @@ function renderAnalytics() {
     ${props.map(p => _buildPropertyBlock(p, pCode)).join('')}
   `;
 
+  // ── Variance Alerts ──
+  const _varMount = document.getElementById('variance-alerts-mount');
+  if (_varMount) renderVarianceAlerts(_varMount, periodLabel, pCode);
+
   // ── Render charts ──
   _mkHBar('anl-bar-portfolio', propNames, [
     { label:'Net Payout (USD)', data:propPayouts, backgroundColor:'#c9971a', borderRadius:4, borderSkipped:false },
@@ -1933,6 +2215,279 @@ function _renderPropCharts(p) {
   if (chU.length) _mkDonut(`anl-ch-usd-${p.id}`, chU, chU.map(k=>chUSDMap[k]), '$');
   if (chC.length) _mkDonut(`anl-ch-cnt-${p.id}`, chC, chC.map(k=>chCntMap[k]), null);
   if (exK.length) _mkDonut(`anl-exp-${p.id}`,    exK, exK.map(k=>expMap[k]),    'GHS');
+}
+
+// ── _mkBar (vertical bar chart) ──────────────────────────────────
+function _mkBar(id, labels, datasets) {
+  _destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  _activeCharts[id] = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Work Sans', size: 10 }, padding: 10, boxWidth: 10, color: '#4a3828' } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Work Sans', size: 10 }, color: '#4a3828' } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { family: 'Work Sans', size: 10 }, color: '#9a8878', callback: v => '$' + v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+// ── VARIANCE ALERTS ──────────────────────────────────────────────
+function renderVarianceAlerts(container, periodLabel, pCode) {
+  const sortedPeriods = PERIOD_LABELS.slice();
+  const primaryIdx = sortedPeriods.findIndex(l => periodToCode(l) === pCode);
+  const prevLabel = sortedPeriods[primaryIdx + 1];
+  const prevCode  = prevLabel ? periodToCode(prevLabel) : null;
+  const currData  = PERIOD_DATA[pCode] || Object.values(PROPERTIES).filter(p => p && p.id);
+  const prevData  = prevCode ? PERIOD_DATA[prevCode] : null;
+
+  if (!prevData) {
+    container.innerHTML += `<div class="anl-section-title">⚡ Variance Alerts — ${periodLabel}</div>
+      <div style="padding:14px 18px;background:var(--paper2);border-radius:var(--r);font-size:12px;color:var(--ink3);margin-bottom:20px;">
+        Load more periods to see MoM variance
+      </div>`;
+    return;
+  }
+
+  const alerts = [];
+  currData.forEach(p => {
+    const curInc = p.totalIncUSD || 0;
+    const prevProp = prevData.find(q => q.id === p.id);
+    if (!prevProp) return;
+    const prevInc = prevProp.totalIncUSD || 0;
+    if (prevInc === 0) return;
+    const pct = ((curInc - prevInc) / prevInc) * 100;
+    if (Math.abs(pct) >= 20) alerts.push({ p, curInc, prevInc, pct });
+  });
+
+  if (alerts.length === 0) {
+    container.innerHTML += `<div class="anl-section-title">⚡ Variance Alerts — ${periodLabel}</div>
+      <div style="padding:14px 18px;background:var(--paper2);border-radius:var(--r);font-size:12px;color:var(--ink3);margin-bottom:20px;">
+        No significant variance detected (all properties within ±20%)
+      </div>`;
+    return;
+  }
+
+  container.innerHTML += `<div class="anl-section-title">⚡ Variance Alerts — ${periodLabel}</div>
+    <div class="alert-grid">
+      ${alerts.map(({ p, curInc, prevInc, pct }) => {
+        const up = pct > 0;
+        return `<div class="alert-card ${up ? 'up' : 'dn'}">
+          <div class="alert-icon">${up ? '▲' : '▼'}</div>
+          <div class="alert-prop">${p.name || p.id}</div>
+          <div class="alert-change">${up ? '+' : ''}${pct.toFixed(1)}% MoM</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px">
+            This: ${fmtUSD(curInc)} &nbsp;·&nbsp; Prev: ${fmtUSD(prevInc)}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ── AUDIT LOG VIEW ───────────────────────────────────────────────
+function renderAuditView() {
+  const el = document.getElementById('audit-view');
+  if (!el) return;
+  const rows = [...AUDIT_LOG].reverse().map(e =>
+    `<tr>
+      <td class="ats">${new Date(e.ts).toLocaleString()}</td>
+      <td class="aact">${e.action}</td>
+      <td>${e.detail}</td>
+      <td>${e.user}</td>
+    </tr>`
+  ).join('');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div class="page-title">📋 Audit <span style="color:var(--gold)">Log</span></div>
+        <div class="page-desc">${AUDIT_LOG.length} entries · last 200 persisted to localStorage</div>
+      </div>
+      <button class="btn-run" onclick="exportAuditCSV()">⬇ Export CSV</button>
+    </div>
+    <table class="audit-table">
+      <thead><tr><th>Timestamp</th><th>Action</th><th>Detail</th><th>User</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:var(--ink3);padding:28px">No audit entries yet</td></tr>'}</tbody>
+    </table>`;
+}
+
+function exportAuditCSV() {
+  const header = 'Timestamp,Action,Detail,User\n';
+  const rows = AUDIT_LOG.map(e =>
+    `"${e.ts}","${e.action}","${(e.detail||'').replace(/"/g,'""')}","${e.user}"`
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'wawa_audit_log.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── ANNUAL TAX PDF EXPORT ────────────────────────────────────────
+function downloadAnnualPDF(pid) {
+  const year = new Date().getFullYear();
+  const allPeriods = PERIOD_LABELS.filter(l => {
+    const code = periodToCode(l);
+    const d = PERIOD_DATA[code];
+    return d && d.find(p => p.id === pid);
+  });
+  if (allPeriods.length === 0) { notify('No period data loaded for this property'); return; }
+
+  let totInc = 0, totCogs = 0, totExp = 0, totPayout = 0, totBookings = 0, totOccSum = 0;
+  const sections = allPeriods.map(label => {
+    const code = periodToCode(label);
+    const pData = (PERIOD_DATA[code] || []).find(p => p.id === pid);
+    if (!pData) return '';
+    const c = computeProperty(pData);
+    totInc += c.totalIncUSD; totCogs += c.cogsUSD; totExp += c.expGHS;
+    totPayout += c.ownerPayout; totBookings += (pData.bookings||[]).length;
+    const occ = computeOccupancyMetrics(pData, code);
+    totOccSum += occ.occupancy;
+    return `<h3 style="background:#2c1f14;color:white;padding:8px 12px;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-top:18px">${label}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="background:#ede6d8"><td style="padding:6px 10px;font-weight:700">Bookings</td><td style="padding:6px 10px;text-align:right">${(pData.bookings||[]).length}</td></tr>
+        <tr><td style="padding:6px 10px">Gross Income (USD)</td><td style="padding:6px 10px;text-align:right;color:#1a5436;font-weight:600">$${c.totalIncUSD.toFixed(2)}</td></tr>
+        <tr style="background:#ede6d8"><td style="padding:6px 10px">TWG COGS (USD)</td><td style="padding:6px 10px;text-align:right;color:#7a1f1f">−$${c.cogsUSD.toFixed(2)}</td></tr>
+        <tr><td style="padding:6px 10px">Expenses (GHS)</td><td style="padding:6px 10px;text-align:right;color:#7a1f1f">−GHS${c.expGHS.toFixed(2)}</td></tr>
+        <tr style="background:#c9971a"><td style="padding:8px 10px;font-weight:700;color:#4a2e1a">Net Owner Payout (USD)</td><td style="padding:8px 10px;text-align:right;font-weight:700;color:#4a2e1a">$${c.ownerPayout.toFixed(2)}</td></tr>
+      </table>`;
+  }).join('');
+
+  const propName = (PERIOD_DATA[periodToCode(allPeriods[0])] || []).find(p => p.id === pid)?.name || pid;
+  const avgOcc = allPeriods.length > 0 ? (totOccSum / allPeriods.length).toFixed(1) : '—';
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Annual Tax Summary — ${year} — ${propName}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Work Sans',sans-serif;max-width:840px;margin:28px auto;color:#2c1f14;font-size:12px;padding:0 28px;background:white;line-height:1.55}h1{font-size:22px;font-weight:800;letter-spacing:-.5px}h1 span{color:#c9971a}.hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #2c1f14}.footer{margin-top:22px;font-size:10px;color:#666;text-align:center;padding-top:14px;border-top:1px solid #dfd6c4}@media print{body{margin:0;padding:14px}@page{margin:12mm 14mm;size:A4}}</style>
+  </head><body>
+  <div class="hd">
+    <div><div style="font-weight:800;font-size:22px;letter-spacing:-1px;color:#2c1f14">wawa<span style="color:#c9971a;font-size:14px;vertical-align:super">●</span></div>
+    <div style="font-size:11px;color:#999;margin-top:2px">Annual Tax Summary</div></div>
+    <div style="text-align:right"><div style="font-size:18px;font-weight:700">${propName}</div><div style="font-size:11px;color:#999">${year} · ${allPeriods.length} periods</div></div>
+  </div>
+  ${sections}
+  <h3 style="background:#c9971a;color:#4a2e1a;padding:10px 12px;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-top:24px">Annual Summary</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr style="background:#ede6d8"><td style="padding:8px 12px;font-weight:700">Total Bookings</td><td style="padding:8px 12px;text-align:right;font-weight:700">${totBookings}</td></tr>
+    <tr><td style="padding:8px 12px">Total Gross Income (USD)</td><td style="padding:8px 12px;text-align:right;color:#1a5436;font-weight:700">$${totInc.toFixed(2)}</td></tr>
+    <tr style="background:#ede6d8"><td style="padding:8px 12px">Total COGS (USD)</td><td style="padding:8px 12px;text-align:right;color:#7a1f1f">−$${totCogs.toFixed(2)}</td></tr>
+    <tr><td style="padding:8px 12px">Total Expenses (GHS)</td><td style="padding:8px 12px;text-align:right;color:#7a1f1f">−GHS${totExp.toFixed(2)}</td></tr>
+    <tr><td style="padding:8px 12px">Average Occupancy</td><td style="padding:8px 12px;text-align:right;font-weight:700">${avgOcc}%</td></tr>
+    <tr style="background:#c9971a"><td style="padding:10px 12px;font-weight:700;color:#4a2e1a;font-size:13px">TOTAL OWNER PAYOUT (USD)</td><td style="padding:10px 12px;text-align:right;font-weight:700;color:#4a2e1a;font-size:13px">$${totPayout.toFixed(2)}</td></tr>
+  </table>
+  <div class="footer">Annual Tax Summary — ${year} — ${propName} &nbsp;·&nbsp; Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; Issued by Wawa Group</div>
+  <script>window.print()<\/script></body></html>`);
+  w.document.close();
+  auditLog('ANNUAL_TAX_EXPORT', propName + ' · ' + year);
+}
+
+// ── SETTINGS MODAL ───────────────────────────────────────────────
+function openSettings() {
+  // Populate owner contacts grid
+  const grid = document.getElementById('owner-contacts-grid');
+  if (grid) {
+    grid.innerHTML = OWNER_IDS.map(id =>
+      `<div class="field">
+        <label>${PROP_NAMES[id] || id} Email</label>
+        <input type="email" id="email-${id}" value="${OWNER_EMAILS[id]||''}" placeholder="owner@example.com"/>
+      </div>
+      <div class="field">
+        <label>${PROP_NAMES[id] || id} WhatsApp</label>
+        <input type="text" id="wa-${id}" value="${OWNER_WA[id]||''}" placeholder="+233…"/>
+      </div>`
+    ).join('');
+  }
+  // Restore saved values
+  const sgk = document.getElementById('sg-key-input');   if (sgk) sgk.value = SENDGRID_API_KEY;
+  const sgf = document.getElementById('sg-from-input');  if (sgf) sgf.value = SG_FROM_EMAIL;
+  const wap = document.getElementById('wa-phone-input'); if (wap) wap.value = WA_PHONE_NUMBER_ID;
+  const wat = document.getElementById('wa-token-input'); if (wat) wat.value = WA_ACCESS_TOKEN;
+  const hak = document.getElementById('ha-key-input');   if (hak) hak.value = HOSTAWAY_KEY;
+  document.getElementById('settings-modal-bg').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal-bg').classList.remove('open');
+}
+
+function bgCloseSettings(e) {
+  if (e.target === document.getElementById('settings-modal-bg')) closeSettings();
+}
+
+function saveSettings() {
+  const sgk = document.getElementById('sg-key-input');   if (sgk) SENDGRID_API_KEY = sgk.value.trim();
+  const sgf = document.getElementById('sg-from-input');  if (sgf) SG_FROM_EMAIL    = sgf.value.trim();
+  const wap = document.getElementById('wa-phone-input'); if (wap) WA_PHONE_NUMBER_ID = wap.value.trim();
+  const wat = document.getElementById('wa-token-input'); if (wat) WA_ACCESS_TOKEN    = wat.value.trim();
+  const hak = document.getElementById('ha-key-input');   if (hak) HOSTAWAY_KEY      = hak.value.trim();
+  OWNER_IDS.forEach(id => {
+    const em = document.getElementById('email-' + id); if (em) OWNER_EMAILS[id] = em.value.trim();
+    const wa = document.getElementById('wa-' + id);    if (wa) OWNER_WA[id]     = wa.value.trim();
+  });
+  try {
+    localStorage.setItem('wawa_settings', JSON.stringify({ SENDGRID_API_KEY, SG_FROM_EMAIL, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN, HOSTAWAY_KEY, OWNER_EMAILS, OWNER_WA }));
+  } catch(e) {}
+  auditLog('SETTINGS_SAVED', 'API keys and contacts updated');
+  closeSettings();
+  notify('✓ Settings saved');
+}
+
+// ── HOSTAWAY VERIFY ──────────────────────────────────────────────
+async function runHostawayVerify() {
+  const panel = document.getElementById('verify-panel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="padding:18px;color:var(--ink3)"><span class="spinner"></span> Fetching Hostaway data…</div>';
+  const periodCode = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
+  const periodData = PERIOD_DATA[periodCode] || Object.values(PROPERTIES).filter(p => p && p.id);
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + `?action=hostaway_verify&period=${periodCode}&haKey=${HOSTAWAY_KEY}&haAccount=${HOSTAWAY_ACCOUNT_ID}`);
+    const json = await res.json();
+    const haData = json.ok ? json.data : {};
+    const rows = periodData.map(p => {
+      const ha = haData[p.id] || {};
+      const sheetsBookings = (p.bookings||[]).length;
+      const haBookings     = ha.bookings ?? '—';
+      const sheetsRev      = p.totalIncUSD || 0;
+      const haRev          = ha.revenue ?? null;
+      const match = haRev !== null && Math.abs(sheetsRev - haRev) < 1 && sheetsBookings === haBookings;
+      return `<tr>
+        <td style="font-weight:600">${p.name||p.id}</td>
+        <td>${sheetsBookings}</td>
+        <td>${haBookings}</td>
+        <td>${fmtUSD(sheetsRev)}</td>
+        <td>${haRev !== null ? fmtUSD(haRev) : '—'}</td>
+        <td class="${match ? 'verify-match' : 'verify-diff'}">${match ? '✅ Match' : '⚠️ Diff'}</td>
+      </tr>`;
+    }).join('');
+    panel.innerHTML = `<div class="verify-panel-hd">🔍 Hostaway Reconciliation — ${document.getElementById('period-sel')?.value || 'January 2026'}</div>
+      <table class="verify-table">
+        <thead><tr><th>Property</th><th>Sheets Bookings</th><th>Hostaway Bookings</th><th>Sheets Revenue</th><th>Hostaway Revenue</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(e) {
+    // Show local-only table when Hostaway API unreachable
+    const rows = periodData.map(p => `<tr>
+      <td style="font-weight:600">${p.name||p.id}</td>
+      <td>${(p.bookings||[]).length}</td>
+      <td style="color:var(--ink3)">—</td>
+      <td>${fmtUSD(p.totalIncUSD||0)}</td>
+      <td style="color:var(--ink3)">—</td>
+      <td class="verify-diff">⚠️ Hostaway unreachable</td>
+    </tr>`).join('');
+    panel.innerHTML = `<div class="verify-panel-hd">🔍 Hostaway Reconciliation (offline mode)</div>
+      <table class="verify-table">
+        <thead><tr><th>Property</th><th>Sheets Bookings</th><th>Hostaway Bookings</th><th>Sheets Revenue</th><th>Hostaway Revenue</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
 }
 
 function _buildPropertyBlock(p, pCode) {
