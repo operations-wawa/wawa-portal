@@ -381,14 +381,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
 .audit-table .ats{font-size:10px;color:var(--ink3);white-space:nowrap;}
 .audit-table .aact{font-weight:700;color:var(--ink);font-size:11px;}
 
-/* ── VERIFY PANEL ── */
-.verify-panel-hd{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;}
-.verify-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--paper3);}
-.verify-table th{background:var(--paper2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
-.verify-table td{padding:8px 12px;font-size:12px;border-bottom:1px solid var(--paper2);color:var(--ink2);}
-.verify-table tr:last-child td{border-bottom:none;}
-.verify-match{color:var(--green);font-weight:700;}
-.verify-diff{color:var(--red);font-weight:700;}
 
 /* ── SETTINGS MODAL ── */
 .settings-modal{background:var(--paper);border-radius:16px;width:640px;max-width:100%;box-shadow:var(--shadow-lg);animation:fadeUp .28s ease both;margin:auto;}
@@ -544,7 +536,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
       </div>
 
       <button class="btn-run" id="run-btn" onclick="runStatements()"><span id="run-icon">▶</span> Generate statements</button>
-      <button class="btn-run btn-ghost" onclick="runHostawayVerify()">Verify</button>
       <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
         <div class="prog-wrap" id="prog-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
         <div class="run-lbl" id="run-lbl">Initialising…</div>
@@ -571,9 +562,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
         <tbody id="admin-tbody"></tbody>
       </table>
     </div>
-    <!-- Hostaway Verify Panel -->
-    <div id="verify-panel" style="display:none;margin-top:16px;"></div>
-
     <!-- Activity Log -->
     <div class="log" id="log-panel" style="margin-top:16px;">
       <div class="sec-title" style="margin-bottom:10px;font-size:10px;letter-spacing:.7px;">
@@ -642,13 +630,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
       </div>
     </div>
     <div class="settings-section">
-      <div class="settings-section-title">Hostaway</div>
-      <div class="settings-grid">
-        <div class="field"><label>Hostaway API Key</label><input type="password" id="ha-key-input" placeholder="ha_…"/></div>
-        <div class="field"><label>Account ID</label><input type="text" id="ha-account-input" value="79226"/></div>
-      </div>
-    </div>
-    <div class="settings-section">
       <div class="settings-section-title">Owner Emails &amp; WhatsApp Numbers</div>
       <div id="owner-contacts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
     </div>
@@ -684,8 +665,6 @@ let SENDGRID_API_KEY  = ''; // Set in Settings
 let SG_FROM_EMAIL     = 'statements@wawagroup.com';
 let WA_PHONE_NUMBER_ID = ''; // WhatsApp Business API
 let WA_ACCESS_TOKEN    = ''; // Meta WA token
-let HOSTAWAY_KEY       = '';
-const HOSTAWAY_ACCOUNT_ID = '79226';
 const OWNER_EMAILS = {}; // { propId: 'email@example.com' }
 const OWNER_WA     = {}; // { propId: '+1234567890' }
 
@@ -1061,21 +1040,27 @@ function sleep(ms) { return new Promise(r => setTimeout(r,ms)); }
 // ── STATEMENT MODAL ──
 let activeProp = null;
 async function openStatement(pid, preloaded) {
-  // Use preloaded data or fetch fresh from Apps Script
-  if (preloaded) {
-    activeProp = preloaded;
-    PROPERTIES[pid] = preloaded;
-  } else if (PROPERTIES[pid] && PROPERTIES[pid].bookings) {
-    activeProp = PROPERTIES[pid];
-  } else {
-    // Fetch fresh
-    try {
-      const period = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
-      const res = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${period}`);
-      const json = await res.json();
-      if (json.ok) { activeProp = json.data; PROPERTIES[pid] = json.data; }
-      else { notify('Could not load statement data'); return; }
-    } catch(e) { notify('Error: ' + e.message); return; }
+  // Always fetch detailed data (?action=owner) so individual booking rows are present.
+  // ?action=all returns aggregate-only data; booking lines would be blank without this.
+  const _period = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${_period}`);
+    const json = await res.json();
+    if (json.ok && json.data) {
+      activeProp = json.data;
+      PROPERTIES[pid] = json.data;
+    } else if (preloaded) {
+      activeProp = preloaded;
+    } else if (PROPERTIES[pid]) {
+      activeProp = PROPERTIES[pid];
+    } else {
+      notify('Could not load statement data'); return;
+    }
+  } catch(e) {
+    // Network error — fall back to whatever we have
+    if (preloaded) { activeProp = preloaded; }
+    else if (PROPERTIES[pid]) { activeProp = PROPERTIES[pid]; }
+    else { notify('Error: ' + e.message); return; }
   }
   const c = computeProperty(activeProp);
   const _activePeriod = document.getElementById('period-sel')?.value || 'January 2026';
@@ -1898,7 +1883,6 @@ try {
     if (s.SG_FROM_EMAIL)     SG_FROM_EMAIL      = s.SG_FROM_EMAIL;
     if (s.WA_PHONE_NUMBER_ID) WA_PHONE_NUMBER_ID = s.WA_PHONE_NUMBER_ID;
     if (s.WA_ACCESS_TOKEN)   WA_ACCESS_TOKEN    = s.WA_ACCESS_TOKEN;
-    if (s.HOSTAWAY_KEY)      HOSTAWAY_KEY       = s.HOSTAWAY_KEY;
     if (s.OWNER_EMAILS) Object.assign(OWNER_EMAILS, s.OWNER_EMAILS);
     if (s.OWNER_WA)     Object.assign(OWNER_WA, s.OWNER_WA);
   }
@@ -2485,7 +2469,6 @@ function openSettings() {
   const sgf = document.getElementById('sg-from-input');  if (sgf) sgf.value = SG_FROM_EMAIL;
   const wap = document.getElementById('wa-phone-input'); if (wap) wap.value = WA_PHONE_NUMBER_ID;
   const wat = document.getElementById('wa-token-input'); if (wat) wat.value = WA_ACCESS_TOKEN;
-  const hak = document.getElementById('ha-key-input');   if (hak) hak.value = HOSTAWAY_KEY;
   document.getElementById('settings-modal-bg').classList.add('open');
 }
 
@@ -2502,13 +2485,12 @@ function saveSettings() {
   const sgf = document.getElementById('sg-from-input');  if (sgf) SG_FROM_EMAIL    = sgf.value.trim();
   const wap = document.getElementById('wa-phone-input'); if (wap) WA_PHONE_NUMBER_ID = wap.value.trim();
   const wat = document.getElementById('wa-token-input'); if (wat) WA_ACCESS_TOKEN    = wat.value.trim();
-  const hak = document.getElementById('ha-key-input');   if (hak) HOSTAWAY_KEY      = hak.value.trim();
   OWNER_IDS.forEach(id => {
     const em = document.getElementById('email-' + id); if (em) OWNER_EMAILS[id] = em.value.trim();
     const wa = document.getElementById('wa-' + id);    if (wa) OWNER_WA[id]     = wa.value.trim();
   });
   try {
-    localStorage.setItem('wawa_settings', JSON.stringify({ SENDGRID_API_KEY, SG_FROM_EMAIL, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN, HOSTAWAY_KEY, OWNER_EMAILS, OWNER_WA }));
+    localStorage.setItem('wawa_settings', JSON.stringify({ SENDGRID_API_KEY, SG_FROM_EMAIL, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN, OWNER_EMAILS, OWNER_WA }));
     auditLog('SETTINGS_SAVED', 'API keys and contacts updated');
     closeSettings();
     notify('✓ Settings saved');
@@ -2518,56 +2500,6 @@ function saveSettings() {
   }
 }
 
-// ── HOSTAWAY VERIFY ──────────────────────────────────────────────
-async function runHostawayVerify() {
-  const panel = document.getElementById('verify-panel');
-  if (!panel) return;
-  panel.style.display = 'block';
-  panel.innerHTML = '<div style="padding:18px;color:var(--ink3)"><span class="spinner"></span> Fetching Hostaway data…</div>';
-  const periodCode = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
-  const periodData = PERIOD_DATA[periodCode] || Object.values(PROPERTIES).filter(p => p && p.id);
-  try {
-    const res  = await fetch(APPS_SCRIPT_URL + `?action=hostaway_verify&period=${periodCode}&haKey=${HOSTAWAY_KEY}&haAccount=${HOSTAWAY_ACCOUNT_ID}`);
-    const json = await res.json();
-    const haData = json.ok ? json.data : {};
-    const rows = periodData.map(p => {
-      const ha = haData[p.id] || {};
-      const sheetsBookings = (p.bookings||[]).length;
-      const haBookings     = ha.bookings ?? '—';
-      const sheetsRev      = p.totalIncUSD || 0;
-      const haRev          = ha.revenue ?? null;
-      const match = haRev !== null && Math.abs(sheetsRev - haRev) < 1 && sheetsBookings === haBookings;
-      return `<tr>
-        <td style="font-weight:600">${p.name||p.id}</td>
-        <td>${sheetsBookings}</td>
-        <td>${haBookings}</td>
-        <td>${fmtUSD(sheetsRev)}</td>
-        <td>${haRev !== null ? fmtUSD(haRev) : '—'}</td>
-        <td class="${match ? 'verify-match' : 'verify-diff'}">${match ? '✅ Match' : '⚠️ Diff'}</td>
-      </tr>`;
-    }).join('');
-    panel.innerHTML = `<div class="verify-panel-hd">🔍 Hostaway Reconciliation — ${document.getElementById('period-sel')?.value || 'January 2026'}</div>
-      <table class="verify-table">
-        <thead><tr><th>Property</th><th>Sheets Bookings</th><th>Hostaway Bookings</th><th>Sheets Revenue</th><th>Hostaway Revenue</th><th>Status</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  } catch(e) {
-    // Show local-only table when Hostaway API unreachable
-    const rows = periodData.map(p => `<tr>
-      <td style="font-weight:600">${p.name||p.id}</td>
-      <td>${(p.bookings||[]).length}</td>
-      <td style="color:var(--ink3)">—</td>
-      <td>${fmtUSD(p.totalIncUSD||0)}</td>
-      <td style="color:var(--ink3)">—</td>
-      <td class="verify-diff">⚠️ Hostaway unreachable</td>
-    </tr>`).join('');
-    panel.innerHTML = `<div class="verify-panel-hd">🔍 Hostaway Reconciliation (offline mode)</div>
-      <table class="verify-table">
-        <thead><tr><th>Property</th><th>Sheets Bookings</th><th>Hostaway Bookings</th><th>Sheets Revenue</th><th>Hostaway Revenue</th><th>Status</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  }
-}
 
 function _buildPropertyBlock(p, pCode) {
   const c   = computeProperty(p);
