@@ -701,8 +701,8 @@ function computeOccupancyMetrics(p, periodCode) {
   const totalNights = bookings.reduce((s, b) =>
     s + (b.nights || parseNights(b.stayDates) || parseNights(b.dates) || 1), 0);
   const availNights = getDaysInPeriod(periodCode);
-  const totalUSD    = bookings.reduce((s, b) => s + (b.usd || 0), 0);
-  const totalGHS    = bookings.reduce((s, b) => s + (b.ghs || 0), 0);
+  const totalUSD    = bookings.reduce((s, b) => s + _bookingUSD(b), 0);
+  const totalGHS    = bookings.reduce((s, b) => s + _bookingGHS(b), 0);
   const occupancy   = availNights > 0 ? Math.min(100, (totalNights / availNights) * 100) : 0;
   const adr         = totalNights > 0 ? totalUSD / totalNights : 0;
   const adrGHS      = totalNights > 0 ? totalGHS / totalNights : 0;
@@ -1108,8 +1108,9 @@ function buildStatement(p, c, _activePeriod) {
   // COGS per booking
   const cogsRows = bookings.map(b => {
     const _twgPct = (p.twgPct||15)/100;
-    const fu = b.usd > 0 ? parseFloat((b.usd * _twgPct).toFixed(2)) : 0;
-    const fg = b.ghs > 0 ? parseFloat((b.ghs * _twgPct).toFixed(2)) : 0;
+    const _bu = _bookingUSD(b); const _bg = _bookingGHS(b);
+    const fu = _bu > 0 ? parseFloat((_bu * _twgPct).toFixed(2)) : 0;
+    const fg = _bg > 0 ? parseFloat((_bg * _twgPct).toFixed(2)) : 0;
     return `<tr>
       <td>TWG Service Fee</td><td>${b.guest}</td><td>${b.displayDate||b.stayDates||b.rawDate||''}</td><td></td>
       <td class="r neg">${fu > 0 ? '−'+fmtUSD(fu) : '$0.00'}</td>
@@ -1140,8 +1141,8 @@ function buildStatement(p, c, _activePeriod) {
           <td style="color:var(--ink3);font-size:11px">${b.stayDates||b.dates||''}</td>
           <td style="color:var(--ink3);font-size:11px">${b.displayDate||b.stayDates||b.rawDate||''}</td>
           <td><span class="chip ${(b.platform||b.channel||'')==='Offline'?'offline':''}">${b.platform||b.channel||''}</span></td>
-          <td class="r ${b.usd>0?'pos':''}">${b.usd>0 ? fmtUSD(b.usd) : '$0.00'}</td>
-          <td class="r ${b.ghs>0?'pos':''}">${b.ghs>0 ? fmtGHS(b.ghs) : 'GHS 0.00'}</td>
+          <td class="r ${_bookingUSD(b)>0?'pos':''}">${_bookingUSD(b)>0 ? fmtUSD(_bookingUSD(b)) : '$0.00'}</td>
+          <td class="r ${_bookingGHS(b)>0?'pos':''}">${_bookingGHS(b)>0 ? fmtGHS(_bookingGHS(b)) : 'GHS 0.00'}</td>
         </tr>`).join('')}
       </tbody>
       <tfoot><tr>
@@ -1271,15 +1272,16 @@ function downloadPDF() {
   const _expensesPDF = p.expenses || [];
   const _twgPct = (p.twgPct || 15) / 100;
   const _cogsRows = _bookingsPDF.map(b => {
-    const fu = b.usd > 0 ? (b.usd * _twgPct).toFixed(2) : '0.00';
-    const fg = b.ghs > 0 ? (b.ghs * _twgPct).toFixed(2) : '0.00';
+    const _bu = _bookingUSD(b); const _bg = _bookingGHS(b);
+    const fu = _bu > 0 ? (_bu * _twgPct).toFixed(2) : '0.00';
+    const fg = _bg > 0 ? (_bg * _twgPct).toFixed(2) : '0.00';
     return `<tr>
       <td>TWG Service Fee</td>
       <td>${b.guest}</td>
       <td class="muted">${b.displayDate || b.stayDates || b.rawDate || ''}</td>
       <td></td>
-      <td class="r neg">${b.usd > 0 ? '-$' + fu : '$0.00'}</td>
-      <td class="r neg">${b.ghs > 0 ? '-GHS' + fg : 'GHS0.00'}</td>
+      <td class="r neg">${_bu > 0 ? '-$' + fu : '$0.00'}</td>
+      <td class="r neg">${_bg > 0 ? '-GHS ' + fg : 'GHS 0.00'}</td>
     </tr>`;
   }).join('');
 
@@ -1364,8 +1366,8 @@ function downloadPDF() {
         <td class="muted">${b.stayDates || b.dates || ''}</td>
         <td class="muted">${b.displayDate || b.stayDates || b.rawDate || ''}</td>
         <td><span class="chip ${(b.platform || b.channel || '') === 'Offline' ? 'off' : ''}">${b.platform || b.channel || ''}</span></td>
-        <td class="r ${b.usd > 0 ? 'pos' : ''}">${b.usd > 0 ? '$' + b.usd.toFixed(2) : '$0.00'}</td>
-        <td class="r ${b.ghs > 0 ? 'pos' : ''}">${b.ghs > 0 ? 'GHS ' + b.ghs.toFixed(2) : 'GHS 0.00'}</td>
+        <td class="r ${_bookingUSD(b)>0?'pos':''}">${_bookingUSD(b)>0 ? fmtUSD(_bookingUSD(b)) : '$0.00'}</td>
+        <td class="r ${_bookingGHS(b)>0?'pos':''}">${_bookingGHS(b)>0 ? fmtGHS(_bookingGHS(b)) : 'GHS 0.00'}</td>
       </tr>`).join('')}
     </tbody>
     <tfoot><tr>
@@ -1922,7 +1924,7 @@ function renderAnalytics() {
   const allChMap    = {};
   props.forEach(p => (p.bookings||[]).forEach(b => {
     const ch = b.platform || b.channel || 'Unknown';
-    allChMap[ch] = (allChMap[ch]||0) + (b.usd||0);
+    allChMap[ch] = (allChMap[ch]||0) + _bookingUSD(b);
   }));
   const allChKeys = Object.keys(allChMap).sort((a,b) => allChMap[b]-allChMap[a]);
 
@@ -2145,7 +2147,7 @@ function _renderPropCharts(p) {
   const chUSDMap={}, chCntMap={}, expMap={};
   (p.bookings||[]).forEach(b => {
     const ch = b.platform||b.channel||'Unknown';
-    chUSDMap[ch] = (chUSDMap[ch]||0)+(b.usd||0);
+    chUSDMap[ch] = (chUSDMap[ch]||0)+_bookingUSD(b);
     chCntMap[ch] = (chCntMap[ch]||0)+1;
   });
   (p.expenses||[]).forEach(e => {
@@ -2399,7 +2401,7 @@ function _buildPropertyBlock(p, pCode) {
   const costRatio= c.totalIncUSD>0 ? ((c.cogsUSD+c.expUSD)/c.totalIncUSD*100) : 0;
   const ratioClr = costRatio>30?'var(--red)':costRatio>20?'#7a5800':'var(--green)';
   const chUSDMap = {};
-  (p.bookings||[]).forEach(b => { const ch=b.platform||b.channel||'Unknown'; chUSDMap[ch]=(chUSDMap[ch]||0)+(b.usd||0); });
+  (p.bookings||[]).forEach(b => { const ch=b.platform||b.channel||'Unknown'; chUSDMap[ch]=(chUSDMap[ch]||0)+_bookingUSD(b); });
   const topCh  = Object.entries(chUSDMap).sort((a,b)=>b[1]-a[1])[0];
   const hasExp = (p.expenses||[]).length > 0;
   const occCls = occ.occupancy>=70?'occ-high':occ.occupancy>=40?'occ-mid':'occ-low';
