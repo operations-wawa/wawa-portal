@@ -727,6 +727,20 @@ async function loadLiveData(period) {
     if (!json.ok) { addLog('Error: ' + json.error, 'err'); return; }
     Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
     json.data.forEach(o => { PROPERTIES[o.id] = o; statuses[o.id] = 'pending'; });
+    // ── DIAGNOSTIC: log first booking to reveal actual field names ──
+    const _diagProp = json.data.find(o => (o.bookings||[]).length > 0);
+    if (_diagProp) {
+      const _b0 = _diagProp.bookings[0];
+      const _keys = Object.keys(_b0).join(', ');
+      console.group('🔍 WAWA DIAG — first booking object');
+      console.log('keys:', _keys);
+      console.log('raw:', JSON.stringify(_b0, null, 2));
+      console.groupEnd();
+      addLog(`🔍 Booking fields detected: ${_keys}`, 'info');
+    } else {
+      console.warn('🔍 WAWA DIAG — no property has bookings in this payload');
+      addLog('🔍 No bookings found in payload for this period.', 'info');
+    }
     // Store in multi-period cache
     PERIOD_DATA[period] = json.data;
     // Sync filterPeriods to the loaded period
@@ -795,6 +809,7 @@ const OWNER_IDS = ['chelsea','oasis','lokko','broadway','mona_lisa','eden','urba
 // ── Booking field-name aliasing helpers ──────────────────────────
 // Apps Script may return booking revenue under many different column names.
 // We try every known alias and return the first numeric, non-NaN value found.
+let _diaggedUSD = false;
 function _bookingUSD(b) {
   if (!b || typeof b !== 'object') return 0;
   const candidates = [
@@ -804,14 +819,24 @@ function _bookingUSD(b) {
     b.amountUSD, b.amount_usd,
     b.nightlyRate, b.payout, b.ownerAmount,
     b.rental_income_usd, b.rentalIncomeUSD,
+    b.booking_usd, b.bookingUSD, b.income, b.Income,
+    b.rate, b.Rate, b.price, b.Price, b.total, b.Total,
+    b.booking_amount, b.booking_income,
   ];
   for (const v of candidates) {
     const n = parseFloat(v);
     if (!isNaN(n) && n !== 0) return n;
   }
+  // One-time diagnostic: if we still can't find a value, log ALL booking keys + values
+  if (!_diaggedUSD && b && typeof b === 'object') {
+    _diaggedUSD = true;
+    console.warn('⚠ _bookingUSD: no known field matched. Actual booking keys & values:');
+    Object.entries(b).forEach(([k, v]) => console.warn(`  ${k}: ${JSON.stringify(v)}`));
+  }
   return 0;
 }
 
+let _diaggedGHS = false;
 function _bookingGHS(b) {
   if (!b || typeof b !== 'object') return 0;
   const candidates = [
@@ -819,11 +844,17 @@ function _bookingGHS(b) {
     b.amountGHS, b.amount_ghs,
     b.totalGHS, b.total_ghs,
     b.rental_income_ghs, b.rentalIncomeGHS,
-    b.revenueGHS,
+    b.revenueGHS, b.booking_ghs, b.bookingGHS,
+    b.income_ghs, b.incomeGHS, b.rate_ghs, b.total_ghs,
   ];
   for (const v of candidates) {
     const n = parseFloat(v);
     if (!isNaN(n) && n !== 0) return n;
+  }
+  if (!_diaggedGHS && b && typeof b === 'object') {
+    _diaggedGHS = true;
+    console.warn('⚠ _bookingGHS: no known field matched. Actual booking keys & values:');
+    Object.entries(b).forEach(([k, v]) => console.warn(`  ${k}: ${JSON.stringify(v)}`));
   }
   return 0;
 }
