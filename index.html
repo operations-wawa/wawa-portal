@@ -215,7 +215,7 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
 
 /* ── ANALYTICS VIEW ── */
 #analytics-view{display:none;padding:36px 40px;max-width:1200px;margin:0 auto;}
-.admin-sub-nav{display:none;background:white;border-bottom:1px solid var(--paper3);padding:0 40px;position:sticky;top:64px;z-index:99;display:none;gap:4px;}
+.admin-sub-nav{display:none;background:white;border-bottom:1px solid var(--paper3);padding:0 40px;position:sticky;top:64px;z-index:99;gap:4px;}
 .view-tab{padding:12px 20px;background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Work Sans',sans-serif;font-size:13px;font-weight:600;color:var(--ink3);cursor:pointer;transition:all .18s;letter-spacing:.1px;}
 .view-tab.on{color:var(--gold);border-bottom-color:var(--gold);}
 .view-tab:hover:not(.on){color:var(--ink);}
@@ -690,15 +690,22 @@ const OWNER_EMAILS = {}; // { propId: 'email@example.com' }
 const OWNER_WA     = {}; // { propId: '+1234567890' }
 
 // ── STATEMENT VERSIONING ──────────────────────────────────────────
-const STATEMENT_VERSIONS = {}; // keyed by propId_periodCode
+const STATEMENT_VERSIONS = {}; // keyed by propId_periodCode — persisted to localStorage
+try { Object.assign(STATEMENT_VERSIONS, JSON.parse(localStorage.getItem('wawa_stmt_versions') || '{}')); } catch(e) {}
 
 // ── AUDIT LOG ────────────────────────────────────────────────────
 const AUDIT_LOG = [];
 
 function auditLog(action, detail) {
-  const entry = { ts: new Date().toISOString(), action, detail, user: 'Admin' };
+  const entry = { ts: new Date().toISOString(), action, detail, user: role || 'Admin' };
   AUDIT_LOG.push(entry);
-  try { localStorage.setItem('wawa_audit', JSON.stringify(AUDIT_LOG.slice(-200))); } catch(e) {}
+  try {
+    localStorage.setItem('wawa_audit', JSON.stringify(AUDIT_LOG.slice(-200)));
+  } catch(e) {
+    // Quota exceeded — trim oldest 20% and retry once
+    const trimmed = AUDIT_LOG.slice(-Math.floor(AUDIT_LOG.length * 0.8));
+    try { localStorage.setItem('wawa_audit', JSON.stringify(trimmed)); } catch(e2) { /* silent — in-memory log still intact */ }
+  }
   addLog(`[AUDIT] ${action}: ${detail}`, 'info');
 }
 
@@ -715,10 +722,15 @@ async function loadAllPeriods() {
       const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${code}`);
       const json = await res.json();
       if (json.ok) { PERIOD_DATA[code] = json.data; }
-    } catch(e) { /* skip failed period */ }
+    } catch(e) {
+      addLog('Could not load ' + label + ': ' + e.message, 'err');
+      auditLog('PERIOD_LOAD_FAILED', label + ' — ' + e.message);
+    }
     await sleep(150);
   }
-  addLog('Multi-period data ready — ' + Object.keys(PERIOD_DATA).length + ' periods loaded.', 'ok');
+  const loaded = Object.keys(PERIOD_DATA).length;
+  addLog('Multi-period data ready — ' + loaded + ' of ' + PERIOD_LABELS.length + ' periods loaded.', 'ok');
+  if (loaded < PERIOD_LABELS.length) notify('⚠ Some periods could not be loaded — trend data may be incomplete');
 }
 
 // ── OCCUPANCY / ADR / REVPAN ──────────────────────────────────────
@@ -781,9 +793,15 @@ async function loadLiveData(period) {
     renderFilteredTable();
     renderFilterPills();
     updateDashboardStats(json.data, period);
-    addLog(`Live data loaded — ${json.data.length} properties for ${document.getElementById('period-sel').value}.`, 'ok');
+    addLog(`Live data loaded — ${json.data.length} properties for ${_loadedLabel}.`, 'ok');
   } catch(e) {
     addLog('Could not reach Apps Script: ' + e.message, 'err');
+    const tbody = document.getElementById('admin-tbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="padding:40px;text-align:center">
+      <div style="color:#7a1f1f;font-weight:600;margin-bottom:12px">⚠ Could not connect to Google Sheets</div>
+      <div style="font-size:11px;color:#9a8878;margin-bottom:16px">${e.message}</div>
+      <button class="btn-run" onclick="loadLiveData('${period}')">↺ Retry</button>
+    </td></tr>`;
   }
 }
 
@@ -794,7 +812,7 @@ function updateDashboardStats(data, period) {
   const sentCount = data.filter(o => statuses[o.id] === 'sent').length;
   const pending   = data.length - sentCount;
   const avgPayout = data.length > 0
-    ? data.reduce((s, o) => s + (o.ownerPayout || computeProperty(o).ownerPayout), 0) / data.length
+    ? data.reduce((s, o) => s + computeProperty(o).ownerPayout, 0) / data.length
     : 0;
 
   // Hero KPIs
@@ -857,15 +875,16 @@ function computeProperty(p) {
   const netUSD  = Math.round((totalIncUSD - cogsUSD - expUSD) * 100) / 100;
   const netGHS  = Math.round((totalIncGHS - cogsGHS - expGHS) * 100) / 100;
   const fxRate  = p.fxRate || 11;
+  if (!p.fxRate) console.warn('[Wawa] Missing fxRate for property', p.id, '— using fallback 11 GHS/USD');
   const ghsConvUSD = Math.round((netGHS / fxRate) * 100) / 100;
   const ownerPayout = Math.round((netUSD + ghsConvUSD) * 100) / 100;
   return { totalIncUSD, totalIncGHS, cogsUSD, cogsGHS, expUSD, expGHS, netUSD, netGHS, ghsConvUSD, ownerPayout };
 }
 
 function usd(n) { return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function ghs(n) { return (n < 0 ? '-GHS' : 'GHS') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function ghs(n) { return (n < 0 ? '-GHS ' : 'GHS ') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtUSD(n) { return n === 0 ? '$0.00' : usd(n); }
-function fmtGHS(n) { return n === 0 ? 'GHS0.00' : ghs(n); }
+function fmtGHS(n) { return n === 0 ? 'GHS 0.00' : ghs(n); }
 
 // ── AUTH ──
 let role = 'admin', currentProp = null;
@@ -883,7 +902,7 @@ function login() {
   auditLog('LOGIN', role);
   if (role === 'admin') {
     document.getElementById('topbar-name').textContent = 'Admin';
-    document.getElementById('admin-sub-nav').style.display = 'block';
+    document.getElementById('admin-sub-nav').style.display = 'flex';
     document.getElementById('admin-view').style.display = 'block';
     renderAdminTable();
     const period = periodToCode(document.getElementById('period-sel').value || 'January 2026');
@@ -908,6 +927,15 @@ function logout() {
   document.getElementById('tab-statements').classList.add('on');
   document.getElementById('tab-analytics').classList.remove('on');
   document.getElementById('tab-audit').classList.remove('on');
+  // reset all global data state so re-login starts fresh
+  Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
+  Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
+  Object.keys(statuses).forEach(k => delete statuses[k]);
+  filterPeriods = new Set(['January 2026']);
+  filterProps.clear();
+  activeProp = null;
+  currentProp = null;
+  auditLog('LOGOUT', role);
 }
 
 // ── ADMIN TABLE ──
@@ -984,13 +1012,15 @@ async function runStatements() {
     addLog(runSteps[i], dot);
     await sleep(550 + Math.random()*350);
   }
-  Object.keys(PROPERTIES).forEach(k => statuses[k]='sent');
+  // Only mark filtered properties as sent
+  const _targetKeys = filterProps.size > 0 ? [...filterProps] : Object.keys(PROPERTIES);
+  _targetKeys.forEach(k => { if (PROPERTIES[k]) statuses[k] = 'sent'; });
   renderFilteredTable();
-  const propCount = Object.keys(PROPERTIES).length;
+  const propCount = _targetKeys.filter(k => PROPERTIES[k]).length;
   // ── Statement Versioning ──
   const periodCode = periodToCode(document.getElementById('period-sel').value || 'January 2026');
   const periodLabel = document.getElementById('period-sel').value || 'January 2026';
-  Object.keys(PROPERTIES).forEach(k => {
+  _targetKeys.filter(k => PROPERTIES[k]).forEach(k => {
     const key = k + '_' + periodCode;
     STATEMENT_VERSIONS[key] = {
       version: (STATEMENT_VERSIONS[key]?.version || 0) + 1,
@@ -998,6 +1028,7 @@ async function runStatements() {
       generatedBy: 'Admin'
     };
   });
+  try { localStorage.setItem('wawa_stmt_versions', JSON.stringify(STATEMENT_VERSIONS)); } catch(e) {}
   addLog(`All ${propCount} statements generated and dispatched.`, 'ok');
   auditLog('STATEMENTS_RUN', periodLabel + ' · ' + propCount + ' properties');
   // ── Drive Archive ──
@@ -1051,7 +1082,10 @@ async function openStatement(pid, preloaded) {
   document.getElementById('modal-title').textContent = activeProp.name + ' — ' + _activePeriod;
   const vKey = pid + '_' + periodToCode(_activePeriod);
   const vInfo = STATEMENT_VERSIONS[vKey];
-  const vBadge = vInfo ? ` · v${vInfo.version} · ${new Date(vInfo.generatedAt).toLocaleString()}` : ' · Draft';
+  const isSent = statuses[vKey] === 'sent' || statuses[pid] === 'sent';
+  const vBadge = vInfo
+    ? ` · v${vInfo.version} · ${isSent ? '✅ Sent' : 'Draft'} · ${new Date(vInfo.generatedAt).toLocaleString()}`
+    : (isSent ? ' · ✅ Sent' : ' · Draft');
   document.getElementById('modal-sub').textContent = (activeProp.bookings||[]).length + ' bookings · TWG fee ' + (activeProp.twgPct||15) + '%' + vBadge;
   document.getElementById('modal-body').innerHTML = buildStatement(activeProp, c, _activePeriod);
   document.getElementById('modal-bg').classList.add('open');
@@ -1060,8 +1094,11 @@ async function openStatement(pid, preloaded) {
 
 function buildStatement(p, c, _activePeriod) {
   _activePeriod = _activePeriod || 'January 2026';
+  // Null-guards — never crash if data is missing
+  const bookings = p.bookings || [];
+  const expenses = p.expenses || [];
   // COGS per booking
-  const cogsRows = p.bookings.map(b => {
+  const cogsRows = bookings.map(b => {
     const _twgPct = (p.twgPct||15)/100;
     const fu = b.usd > 0 ? parseFloat((b.usd * _twgPct).toFixed(2)) : 0;
     const fg = b.ghs > 0 ? parseFloat((b.ghs * _twgPct).toFixed(2)) : 0;
@@ -1090,13 +1127,13 @@ function buildStatement(p, c, _activePeriod) {
         <th class="r">USD</th><th class="r">GHS</th>
       </tr></thead>
       <tbody>
-        ${p.bookings.map(b => `<tr>
+        ${bookings.map(b => `<tr>
           <td>${b.guest}</td>
           <td style="color:var(--ink3);font-size:11px">${b.stayDates||b.dates||''}</td>
           <td style="color:var(--ink3);font-size:11px">${b.displayDate||b.stayDates||b.rawDate||''}</td>
           <td><span class="chip ${(b.platform||b.channel||'')==='Offline'?'offline':''}">${b.platform||b.channel||''}</span></td>
           <td class="r ${b.usd>0?'pos':''}">${b.usd>0 ? fmtUSD(b.usd) : '$0.00'}</td>
-          <td class="r ${b.ghs>0?'pos':''}">${b.ghs>0 ? fmtGHS(b.ghs) : 'GHS0.00'}</td>
+          <td class="r ${b.ghs>0?'pos':''}">${b.ghs>0 ? fmtGHS(b.ghs) : 'GHS 0.00'}</td>
         </tr>`).join('')}
       </tbody>
       <tfoot><tr>
@@ -1107,7 +1144,7 @@ function buildStatement(p, c, _activePeriod) {
     </table>
 
     <!-- COGS -->
-    <div class="sect-hd cogs">COGS — TWG Service Fee (${activeProp.twgPct||15}%)</div>
+    <div class="sect-hd cogs">COGS — TWG Service Fee (${p.twgPct||15}%)</div>
     <table class="tx-table">
       <thead><tr>
         <th>Description</th><th>Guest</th><th>Date</th><th></th>
@@ -1129,18 +1166,18 @@ function buildStatement(p, c, _activePeriod) {
         <th class="r">USD</th><th class="r">GHS</th>
       </tr></thead>
       <tbody>
-        ${p.expenses.map(e => `<tr>
+        ${expenses.map(e => `<tr>
           <td>${e.desc||e.description||''}</td>
           <td style="color:var(--ink3);font-size:11px">${e.rawDate||e.date||''}</td>
           <td><span class="chip" style="background:var(--paper2);color:var(--ink3)">${e.category||e.cat||''}</span></td>
           <td></td>
-          <td class="r">${e.usd > 0 ? '−'+fmtUSD(e.usd) : '$0.00'}</td>
-          <td class="r neg">${e.ghs > 0 ? '−'+fmtGHS(e.ghs) : 'GHS0.00'}</td>
+          <td class="r neg">${e.usd > 0 ? '−'+fmtUSD(e.usd) : '—'}</td>
+          <td class="r neg">${e.ghs > 0 ? '−'+fmtGHS(e.ghs) : 'GHS 0.00'}</td>
         </tr>`).join('')}
       </tbody>
       <tfoot><tr>
         <td colspan="4"><strong>TOTAL EXPENSES</strong></td>
-        <td class="r">$0.00</td>
+        <td class="r neg"><strong>${c.expUSD > 0 ? '−'+fmtUSD(c.expUSD) : '—'}</strong></td>
         <td class="r neg"><strong>−${fmtGHS(c.expGHS)}</strong></td>
       </tr></tfoot>
     </table>
@@ -1150,24 +1187,27 @@ function buildStatement(p, c, _activePeriod) {
     <div>
       <div class="net-row"><span>Total Revenue</span><span style="display:flex;gap:24px"><span class="nr pos">${fmtUSD(c.totalIncUSD)}</span><span class="nr pos">${fmtGHS(c.totalIncGHS)}</span></span></div>
       <div class="net-row"><span>Total COGS</span><span style="display:flex;gap:24px"><span class="nr neg">−${fmtUSD(c.cogsUSD)}</span><span class="nr neg">−${fmtGHS(c.cogsGHS)}</span></span></div>
-      <div class="net-row"><span>Total Expenses</span><span style="display:flex;gap:24px"><span class="nr">$0.00</span><span class="nr neg">−${fmtGHS(c.expGHS)}</span></span></div>
-      <div class="net-row total"><span>NET INCOME</span><span style="display:flex;gap:24px"><span class="nr">${fmtUSD(c.netUSD)}</span><span class="nr ${c.netGHS<0?'neg':''}">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></span></div>
-      <div class="net-row total" style="background:var(--ink2)"><span>OWNER PAYOUT (before FX)</span><span style="display:flex;gap:24px"><span class="nr">${fmtUSD(c.netUSD)}</span><span class="nr ${c.netGHS<0?'neg':''}">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></span></div>
+      <div class="net-row"><span>Total Expenses</span><span style="display:flex;gap:24px"><span class="nr neg">${c.expUSD > 0 ? '−'+fmtUSD(c.expUSD) : '—'}</span><span class="nr neg">−${fmtGHS(c.expGHS)}</span></span></div>
+      <div class="net-row total"><span>NET INCOME (USD)</span><span style="display:flex;gap:24px"><span class="nr">${fmtUSD(c.netUSD)}</span><span class="nr ${c.netGHS<0?'neg':''}">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></span></div>
     </div>
     <div class="fx-row">
-      <span>GHS → USD conversion @ rate <b>${p.fxRate}</b></span>
-      <span style="font-family:'Work Sans',sans-serif;font-size:11px;color:var(--red)">−${fmtUSD(-c.ghsConvUSD)}</span>
-      <span style="color:var(--ink3)">${p.fxDate}</span>
+      <span>GHS → USD conversion @ rate <b>${p.fxRate || '11 (estimated)'}</b>${!p.fxRate ? ' ⚠' : ''}</span>
+      <span style="font-family:'Work Sans',sans-serif;font-size:11px;color:var(--green);font-weight:600">+${fmtUSD(c.ghsConvUSD)}</span>
+      <span style="color:var(--ink3)">${p.fxDate || ''}</span>
     </div>
     <div class="net-row payout"><span>TOTAL OWNER PAYOUT</span><span class="nr">${fmtUSD(c.ownerPayout)}</span></div>
   </div>`;
 }
 
 async function fetchAI(p, c, period) {
+  // Null-guard
+  if (!p || !p.bookings) return;
   // Insert AI strip after modal body is rendered
   const body = document.getElementById('modal-body');
   const strip = document.createElement('div');
-  strip.innerHTML = `<div class="ai-strip"><div class="ai-strip-lbl">✦ AI Commentary</div><div class="ai-strip-text loading" id="ai-txt">Generating analysis…</div></div>
+  // Check for placeholder API key
+  const _keyMissing = !ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'YOUR_API_KEY_HERE';
+  strip.innerHTML = `<div class="ai-strip"><div class="ai-strip-lbl">✦ AI Commentary</div><div class="ai-strip-text ${_keyMissing ? '' : 'loading'}" id="ai-txt">${_keyMissing ? 'AI commentary unavailable — Anthropic API key not configured in source.' : 'Generating analysis…'}</div></div>
   <div class="modal-actions">
     <button class="btn-act btn-dark" onclick="downloadPDF()">⬇ Download PDF</button>
     <button class="btn-act btn-gold" onclick="markSent()">✓ Mark as sent</button>
@@ -1181,8 +1221,10 @@ async function fetchAI(p, c, period) {
     <button class="chip-btn" id="chip-portal" onclick="sendVia('portal')">🔗 Portal link</button>
   </div>`;
   body.appendChild(strip);
+  if (_keyMissing) return; // No API key — stop here, message already shown
 
-  const prompt = `You are a property manager at Wawa Group in Ghana. Write a 2-sentence professional owner statement commentary (plain text, no bullets, no markdown) for: Property: ${p.name}, Month: ${period}, Bookings: ${p.bookings.length}, Total income: USD ${c.totalIncUSD.toFixed(2)} + GHS ${c.totalIncGHS.toFixed(2)}, TWG fees: USD ${c.cogsUSD.toFixed(2)}, Expenses: GHS ${c.expGHS.toFixed(2)}, Net owner payout: USD ${c.ownerPayout.toFixed(2)}. Be warm, professional, and highlight performance.`;
+  const _bookings = p.bookings || [];
+  const prompt = `You are a property manager at Wawa Group in Ghana. Write a 2-sentence professional owner statement commentary (plain text, no bullets, no markdown) for: Property: ${p.name}, Month: ${period}, Bookings: ${_bookings.length}, Total income: USD ${c.totalIncUSD.toFixed(2)} + GHS ${c.totalIncGHS.toFixed(2)}, TWG fees: USD ${c.cogsUSD.toFixed(2)}, Expenses: GHS ${c.expGHS.toFixed(2)}, Net owner payout: USD ${c.ownerPayout.toFixed(2)}. Be warm, professional, and highlight performance.`;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST', headers:{'Content-Type':'application/json','x-api-key': ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -1194,7 +1236,7 @@ async function fetchAI(p, c, period) {
     if (el) { el.textContent = text; el.classList.remove('loading'); }
   } catch {
     const el = document.getElementById('ai-txt');
-    if (el) { el.textContent = `${p.name} had a strong ${period} with ${p.bookings.length} bookings and a total owner payout of ${fmtUSD(c.ownerPayout)}.`; el.classList.remove('loading'); }
+    if (el) { el.textContent = `${p.name} had a strong ${period} with ${(p.bookings||[]).length} bookings and a total owner payout of ${fmtUSD(c.ownerPayout)}.`; el.classList.remove('loading'); }
   }
 }
 
@@ -1216,9 +1258,11 @@ function downloadPDF() {
   const _aiEl  = document.getElementById('ai-txt');
   const _aiTxt = (_aiEl && !_aiEl.classList.contains('loading')) ? _aiEl.textContent.trim() : '';
 
-  // COGS rows
+  // COGS rows — null-guard bookings/expenses
+  const _bookingsPDF = p.bookings || [];
+  const _expensesPDF = p.expenses || [];
   const _twgPct = (p.twgPct || 15) / 100;
-  const _cogsRows = p.bookings.map(b => {
+  const _cogsRows = _bookingsPDF.map(b => {
     const fu = b.usd > 0 ? (b.usd * _twgPct).toFixed(2) : '0.00';
     const fg = b.ghs > 0 ? (b.ghs * _twgPct).toFixed(2) : '0.00';
     return `<tr>
@@ -1307,13 +1351,13 @@ function downloadPDF() {
       <th>Guest</th><th>Stay Dates</th><th>Date</th><th>Channel</th><th class="r">USD</th><th class="r">GHS</th>
     </tr></thead>
     <tbody>
-      ${p.bookings.map(b => `<tr>
+      ${_bookingsPDF.map(b => `<tr>
         <td>${b.guest}</td>
         <td class="muted">${b.stayDates || b.dates || ''}</td>
         <td class="muted">${b.displayDate || b.stayDates || b.rawDate || ''}</td>
         <td><span class="chip ${(b.platform || b.channel || '') === 'Offline' ? 'off' : ''}">${b.platform || b.channel || ''}</span></td>
         <td class="r ${b.usd > 0 ? 'pos' : ''}">${b.usd > 0 ? '$' + b.usd.toFixed(2) : '$0.00'}</td>
-        <td class="r ${b.ghs > 0 ? 'pos' : ''}">${b.ghs > 0 ? 'GHS' + b.ghs.toFixed(2) : 'GHS0.00'}</td>
+        <td class="r ${b.ghs > 0 ? 'pos' : ''}">${b.ghs > 0 ? 'GHS ' + b.ghs.toFixed(2) : 'GHS 0.00'}</td>
       </tr>`).join('')}
     </tbody>
     <tfoot><tr>
@@ -1344,19 +1388,19 @@ function downloadPDF() {
       <th>Description</th><th>Date</th><th>Category</th><th></th><th class="r">USD</th><th class="r">GHS</th>
     </tr></thead>
     <tbody>
-      ${p.expenses.map(e => `<tr>
+      ${_expensesPDF.map(e => `<tr>
         <td>${e.desc || e.description || ''}</td>
         <td class="muted">${e.rawDate || e.date || ''}</td>
         <td class="muted" style="font-size:10px">${e.category || e.cat || ''}</td>
         <td></td>
-        <td class="r">$0.00</td>
-        <td class="r neg">${e.ghs > 0 ? '-GHS' + e.ghs.toFixed(2) : 'GHS0.00'}</td>
+        <td class="r neg">${e.usd > 0 ? '-$' + e.usd.toFixed(2) : '—'}</td>
+        <td class="r neg">${e.ghs > 0 ? '-GHS ' + e.ghs.toFixed(2) : 'GHS 0.00'}</td>
       </tr>`).join('')}
     </tbody>
     <tfoot><tr>
       <td colspan="4"><strong>TOTAL EXPENSES</strong></td>
-      <td class="r">$0.00</td>
-      <td class="r neg"><strong>-GHS${c.expGHS.toFixed(2)}</strong></td>
+      <td class="r neg"><strong>${c.expUSD > 0 ? '-$' + c.expUSD.toFixed(2) : '—'}</strong></td>
+      <td class="r neg"><strong>-GHS ${c.expGHS.toFixed(2)}</strong></td>
     </tr></tfoot>
   </table>
 
@@ -1372,19 +1416,15 @@ function downloadPDF() {
   </div>
   <div class="net-row">
     <span>Total Expenses</span>
-    <span class="nr-pair"><span class="nr">$0.00</span><span class="nr neg">-GHS${c.expGHS.toFixed(2)}</span></span>
+    <span class="nr-pair"><span class="nr neg">${c.expUSD > 0 ? '-$' + c.expUSD.toFixed(2) : '—'}</span><span class="nr neg">-GHS ${c.expGHS.toFixed(2)}</span></span>
   </div>
   <div class="net-row total">
-    <span>NET INCOME</span>
-    <span class="nr-pair"><span class="nr">$${c.netUSD.toFixed(2)}</span><span class="nr">${c.netGHS < 0 ? '-GHS' + (-c.netGHS).toFixed(2) : 'GHS' + c.netGHS.toFixed(2)}</span></span>
-  </div>
-  <div class="net-row prefx">
-    <span>OWNER PAYOUT (before FX)</span>
-    <span class="nr-pair"><span class="nr">$${c.netUSD.toFixed(2)}</span><span class="nr">${c.netGHS < 0 ? '-GHS' + (-c.netGHS).toFixed(2) : 'GHS' + c.netGHS.toFixed(2)}</span></span>
+    <span>NET INCOME (USD)</span>
+    <span class="nr-pair"><span class="nr">$${c.netUSD.toFixed(2)}</span><span class="nr">${c.netGHS < 0 ? '-GHS ' + (-c.netGHS).toFixed(2) : 'GHS ' + c.netGHS.toFixed(2)}</span></span>
   </div>
   <div class="fx-row">
-    <span>GHS → USD conversion @ rate <b>${p.fxRate}</b> · ${p.fxDate}</span>
-    <span class="fx-val">-$${(-c.ghsConvUSD).toFixed(2)}</span>
+    <span>GHS → USD conversion @ rate <b>${p.fxRate || '11 (est.)'}</b>${!p.fxRate ? ' ⚠' : ''} · ${p.fxDate || ''}</span>
+    <span style="color:#1a5436;font-weight:600">+$${c.ghsConvUSD.toFixed(2)}</span>
   </div>
   <div class="net-row payout">
     <span>TOTAL OWNER PAYOUT</span>
@@ -1418,7 +1458,7 @@ async function sendVia(ch) {
   // Real SendGrid call if key set
   if (ch === 'email' && SENDGRID_API_KEY && activeProp && OWNER_EMAILS[activeProp.id]) {
     try {
-      await fetch('https://api.sendgrid.com/v3/mail/send', {
+      const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + SENDGRID_API_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1428,10 +1468,11 @@ async function sendVia(ch) {
           content: [{ type: 'text/plain', value: `Dear Owner,\n\nPlease find your statement attached.\n\nWawa Group` }]
         })
       });
-    } catch(e) { addLog('SendGrid error: ' + e.message, 'err'); }
+      if (!sgRes.ok) throw new Error('SendGrid HTTP ' + sgRes.status);
+    } catch(e) { addLog('SendGrid error: ' + e.message, 'err'); notify('⚠ Email delivery failed: ' + e.message); return; }
   } else if (ch === 'whatsapp' && WA_ACCESS_TOKEN && WA_PHONE_NUMBER_ID && activeProp && OWNER_WA[activeProp.id]) {
     try {
-      await fetch(`https://graph.facebook.com/v18.0/${WA_PHONE_NUMBER_ID}/messages`, {
+      const waRes = await fetch(`https://graph.facebook.com/v18.0/${WA_PHONE_NUMBER_ID}/messages`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + WA_ACCESS_TOKEN, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1439,7 +1480,8 @@ async function sendVia(ch) {
           type: 'text', text: { body: `Your ${activeProp.name} statement is ready on the Wawa owner portal.` }
         })
       });
-    } catch(e) { addLog('WhatsApp API error: ' + e.message, 'err'); }
+      if (!waRes.ok) throw new Error('WhatsApp API HTTP ' + waRes.status);
+    } catch(e) { addLog('WhatsApp API error: ' + e.message, 'err'); notify('⚠ WhatsApp delivery failed: ' + e.message); return; }
   } else {
     await sleep(1200+Math.random()*600);
   }
@@ -1464,13 +1506,23 @@ async function renderOwnerView() {
 
   // Fetch all periods for this owner
   const results = [];
+  let failedPeriods = 0;
   for (const per of periods) {
     try {
       const code = periodToCode(per);
       const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${code}`);
       const json = await res.json();
       if (json.ok && json.data) results.push({ period: per, data: json.data });
-    } catch(e) { /* skip period */ }
+      else failedPeriods++;
+    } catch(e) { failedPeriods++; }
+  }
+
+  if (failedPeriods > 0 && results.length > 0) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#faeaea;border:1px solid #7a1f1f;border-radius:8px;padding:10px 16px;font-size:12px;color:#7a1f1f;margin-bottom:12px;';
+    banner.textContent = `⚠ ${failedPeriods} period${failedPeriods>1?'s':''} could not be loaded — figures may be incomplete`;
+    const ownerView = document.getElementById('owner-view');
+    if (ownerView) ownerView.insertBefore(banner, ownerView.firstChild.nextSibling);
   }
 
   if (results.length === 0) {
@@ -1502,12 +1554,13 @@ async function renderOwnerView() {
     ytdEl.innerHTML = `<div class="owner-ytd-strip">
       <div class="owner-ytd-cell"><div class="ytd-lbl">YTD Total Earned</div><div class="ytd-val">${fmtUSD(ytdEarned)}</div><div class="ytd-sub">Net owner payouts</div></div>
       <div class="owner-ytd-cell"><div class="ytd-lbl">YTD Bookings</div><div class="ytd-val">${ytdBookings}</div><div class="ytd-sub">Across ${results.length} periods</div></div>
-      <div class="owner-ytd-cell"><div class="ytd-lbl">Best Month</div><div class="ytd-val">${bestMonthR.period.split(' ')[0].slice(0,3)}</div><div class="ytd-sub">${fmtUSD(bestMonthR.data.ownerPayout || 0)}</div></div>
+      <div class="owner-ytd-cell"><div class="ytd-lbl">Best Month</div><div class="ytd-val" style="font-size:14px">${bestMonthR.period.split(' ')[0].slice(0,3) + ' ' + bestMonthR.period.split(' ')[1]}</div><div class="ytd-sub">${fmtUSD(bestMonthR.data.ownerPayout || 0)}</div></div>
     </div>`;
   }
 
   list.innerHTML = results.map(({ period, data }) => {
-    const st = statuses[pid] || 'pending';
+    const stKey = pid + '_' + periodToCode(period);
+    const st = statuses[stKey] || statuses[pid] || 'pending';
     const badge = st==='sent'
       ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
       : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
@@ -1569,8 +1622,16 @@ async function loadAndOpenStatement(pid, period) {
     const json = await res.json();
     if (json.ok && json.data) {
       PROPERTIES[pid] = json.data;
+      PERIOD_DATA[period] = PERIOD_DATA[period] || [];
+      // Update or insert this property's data in the period cache
+      const idx = PERIOD_DATA[period].findIndex(p => p.id === pid);
+      if (idx >= 0) PERIOD_DATA[period][idx] = json.data; else PERIOD_DATA[period].push(json.data);
       currentProp = json.data;
-      openStatement(pid);
+      // Sync period-sel so openStatement builds the modal with the correct period label
+      const periodLabel = PERIOD_LABELS.find(l => periodToCode(l) === period) || 'January 2026';
+      const sel = document.getElementById('period-sel');
+      if (sel) sel.value = periodLabel;
+      openStatement(pid, json.data);
     }
   } catch(e) { notify('Could not load statement: ' + e.message); }
 }
@@ -1993,18 +2054,21 @@ function renderAnalytics() {
   const allChKeys = Object.keys(allChMap).sort((a,b) => allChMap[b]-allChMap[a]);
 
   // ── YTD aggregates across PERIOD_DATA ──
-  let ytdIncome=0, ytdPayout=0, ytdFees=0, ytdBookings=0, ytdPeriods=0;
-  Object.values(PERIOD_DATA).forEach(periodProps => {
+  let ytdIncome=0, ytdPayout=0, ytdFees=0, ytdBookings=0, ytdPeriods=0, ytdNightsBooked=0, ytdNightsAvail=0;
+  Object.entries(PERIOD_DATA).forEach(([pCode, periodProps]) => {
     if (!Array.isArray(periodProps)) return;
     ytdPeriods++;
     periodProps.forEach(o => {
       ytdIncome   += o.totalIncUSD || 0;
-      ytdPayout   += o.ownerPayout || computeProperty(o).ownerPayout || 0;
+      ytdPayout   += computeProperty(o).ownerPayout || 0;
       ytdFees     += o.cogsUSD     || 0;
       ytdBookings += (o.bookings||[]).length;
+      const occ = computeOccupancyMetrics(o, pCode);
+      ytdNightsBooked += occ.totalNights;
+      ytdNightsAvail  += occ.availNights;
     });
   });
-  const ytdAvgOcc = ytdPeriods > 0 ? (ytdBookings / (ytdPeriods * props.length * 30) * 100).toFixed(1) : '—';
+  const ytdAvgOcc = ytdNightsAvail > 0 ? (ytdNightsBooked / ytdNightsAvail * 100).toFixed(1) : '—';
 
   // ── MoM trend data (respects property filter) ──
   const trendLabels  = PERIOD_LABELS.slice().reverse();
@@ -2168,17 +2232,19 @@ function renderAnalytics() {
   const _varMount = document.getElementById('variance-alerts-mount');
   if (_varMount) renderVarianceAlerts(_varMount, periodLabel, pCode);
 
-  // ── Render charts ──
-  _mkHBar('anl-bar-portfolio', propNames, [
-    { label:'Net Payout (USD)', data:propPayouts, backgroundColor:'#c9971a', borderRadius:4, borderSkipped:false },
-    { label:'TWG Fees (USD)',   data:propCogs,    backgroundColor:'#4a2e1a', borderRadius:4, borderSkipped:false }
-  ]);
-  _mkDonut('anl-donut-portfolio-ch', allChKeys, allChKeys.map(k=>allChMap[k]), '$');
-  _mkLine('anl-trend-line', trendShort, [
-    { label:'Total Income (USD)', data:trendIncome, borderColor:'#c9971a', backgroundColor:'rgba(201,151,26,.1)', tension:.35 },
-    { label:'Owner Payouts (USD)', data:trendPayout, borderColor:'#1a5436', backgroundColor:'rgba(26,84,54,.08)', tension:.35 }
-  ]);
-  props.forEach(p => _renderPropCharts(p));
+  // ── Render charts (setTimeout ensures canvas has computed dimensions) ──
+  setTimeout(() => {
+    _mkHBar('anl-bar-portfolio', propNames, [
+      { label:'Net Payout (USD)', data:propPayouts, backgroundColor:'#c9971a', borderRadius:4, borderSkipped:false },
+      { label:'TWG Fees (USD)',   data:propCogs,    backgroundColor:'#4a2e1a', borderRadius:4, borderSkipped:false }
+    ]);
+    _mkDonut('anl-donut-portfolio-ch', allChKeys, allChKeys.map(k=>allChMap[k]), '$');
+    _mkLine('anl-trend-line', trendShort, [
+      { label:'Total Income (USD)', data:trendIncome, borderColor:'#c9971a', backgroundColor:'rgba(201,151,26,.1)', tension:.35 },
+      { label:'Owner Payouts (USD)', data:trendPayout, borderColor:'#1a5436', backgroundColor:'rgba(26,84,54,.08)', tension:.35 }
+    ]);
+    props.forEach(p => _renderPropCharts(p));
+  }, 50);
 }
 
 function _mkLine(id, labels, datasets) {
@@ -2335,7 +2401,12 @@ function exportAuditCSV() {
 
 // ── ANNUAL TAX PDF EXPORT ────────────────────────────────────────
 function downloadAnnualPDF(pid) {
-  const year = new Date().getFullYear();
+  // Derive year from actual data periods, not current date
+  const _dataYears = PERIOD_LABELS
+    .filter(l => { const code = periodToCode(l); const d = PERIOD_DATA[code]; return d && d.find(p => p.id === pid); })
+    .map(l => parseInt(l.split(' ')[1]))
+    .filter(Boolean);
+  const year = _dataYears.length > 0 ? Math.max(..._dataYears) : new Date().getFullYear();
   const allPeriods = PERIOD_LABELS.filter(l => {
     const code = periodToCode(l);
     const d = PERIOD_DATA[code];
@@ -2343,13 +2414,13 @@ function downloadAnnualPDF(pid) {
   });
   if (allPeriods.length === 0) { notify('No period data loaded for this property'); return; }
 
-  let totInc = 0, totCogs = 0, totExp = 0, totPayout = 0, totBookings = 0, totOccSum = 0;
+  let totInc = 0, totCogs = 0, totExpGHS = 0, totExpUSD = 0, totPayout = 0, totBookings = 0, totOccSum = 0;
   const sections = allPeriods.map(label => {
     const code = periodToCode(label);
     const pData = (PERIOD_DATA[code] || []).find(p => p.id === pid);
     if (!pData) return '';
     const c = computeProperty(pData);
-    totInc += c.totalIncUSD; totCogs += c.cogsUSD; totExp += c.expGHS;
+    totInc += c.totalIncUSD; totCogs += c.cogsUSD; totExpGHS += c.expGHS; totExpUSD += c.expUSD;
     totPayout += c.ownerPayout; totBookings += (pData.bookings||[]).length;
     const occ = computeOccupancyMetrics(pData, code);
     totOccSum += occ.occupancy;
@@ -2382,7 +2453,8 @@ function downloadAnnualPDF(pid) {
     <tr style="background:#ede6d8"><td style="padding:8px 12px;font-weight:700">Total Bookings</td><td style="padding:8px 12px;text-align:right;font-weight:700">${totBookings}</td></tr>
     <tr><td style="padding:8px 12px">Total Gross Income (USD)</td><td style="padding:8px 12px;text-align:right;color:#1a5436;font-weight:700">$${totInc.toFixed(2)}</td></tr>
     <tr style="background:#ede6d8"><td style="padding:8px 12px">Total COGS (USD)</td><td style="padding:8px 12px;text-align:right;color:#7a1f1f">−$${totCogs.toFixed(2)}</td></tr>
-    <tr><td style="padding:8px 12px">Total Expenses (GHS)</td><td style="padding:8px 12px;text-align:right;color:#7a1f1f">−GHS${totExp.toFixed(2)}</td></tr>
+    <tr><td style="padding:8px 12px">Total Expenses (GHS)</td><td style="padding:8px 12px;text-align:right;color:#7a1f1f">−GHS ${totExpGHS.toFixed(2)}</td></tr>
+    ${totExpUSD > 0 ? `<tr style="background:#ede6d8"><td style="padding:8px 12px">Total Expenses (USD)</td><td style="padding:8px 12px;text-align:right;color:#7a1f1f">−$${totExpUSD.toFixed(2)}</td></tr>` : ''}
     <tr><td style="padding:8px 12px">Average Occupancy</td><td style="padding:8px 12px;text-align:right;font-weight:700">${avgOcc}%</td></tr>
     <tr style="background:#c9971a"><td style="padding:10px 12px;font-weight:700;color:#4a2e1a;font-size:13px">TOTAL OWNER PAYOUT (USD)</td><td style="padding:10px 12px;text-align:right;font-weight:700;color:#4a2e1a;font-size:13px">$${totPayout.toFixed(2)}</td></tr>
   </table>
@@ -2437,10 +2509,13 @@ function saveSettings() {
   });
   try {
     localStorage.setItem('wawa_settings', JSON.stringify({ SENDGRID_API_KEY, SG_FROM_EMAIL, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN, HOSTAWAY_KEY, OWNER_EMAILS, OWNER_WA }));
-  } catch(e) {}
-  auditLog('SETTINGS_SAVED', 'API keys and contacts updated');
-  closeSettings();
-  notify('✓ Settings saved');
+    auditLog('SETTINGS_SAVED', 'API keys and contacts updated');
+    closeSettings();
+    notify('✓ Settings saved');
+  } catch(e) {
+    notify('⚠ Settings could not be saved — storage may be full');
+    auditLog('SETTINGS_SAVE_FAILED', e.message);
+  }
 }
 
 // ── HOSTAWAY VERIFY ──────────────────────────────────────────────
