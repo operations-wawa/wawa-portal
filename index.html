@@ -441,7 +441,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
   <div class="admin-sub-nav" id="admin-sub-nav">
     <button class="view-tab on" id="tab-statements" onclick="showAdminTab('statements')">Statements</button>
     <button class="view-tab" id="tab-analytics" onclick="showAdminTab('analytics')">Analytics</button>
-    <button class="view-tab" id="tab-audit" onclick="showAdminTab('audit')">Audit Log</button>
   </div>
 
   <!-- ADMIN -->
@@ -827,36 +826,111 @@ const PROPERTIES = {};
 const statuses = {};
 const OWNER_IDS = ['chelsea','oasis','lokko','broadway','mona_lisa','eden','urban_farmhouse','ocean_heights','nshornaa'];
 
-function computeProperty(p) {
-  // If live data from Apps Script, use pre-computed financials directly
-  if (p.ownerPayout !== undefined) {
-    return {
-      totalIncUSD: p.totalIncUSD || 0,
-      totalIncGHS: p.totalIncGHS || 0,
-      cogsUSD:     p.cogsUSD    || 0,
-      cogsGHS:     p.cogsGHS    || 0,
-      expUSD:      p.expUSD     || 0,
-      expGHS:      p.expGHS     || 0,
-      netUSD:      p.netUSD     || 0,
-      netGHS:      p.netGHS     || 0,
-      ghsConvUSD:  p.ghsToUSD   || 0,
-      ownerPayout: p.ownerPayout|| 0,
-    };
+// ── Booking field-name aliasing helpers ──────────────────────────
+// Apps Script may return booking revenue under many different column names.
+// We try every known alias and return the first numeric, non-NaN value found.
+function _bookingUSD(b) {
+  if (!b || typeof b !== 'object') return 0;
+  const candidates = [
+    b.usd, b.USD, b.usdAmount, b.usd_amount,
+    b.amount, b.Amount, b.revenue, b.Revenue,
+    b.totalUSD, b.total_usd, b.totalAmount,
+    b.amountUSD, b.amount_usd,
+    b.nightlyRate, b.payout, b.ownerAmount,
+    b.rental_income_usd, b.rentalIncomeUSD,
+  ];
+  for (const v of candidates) {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n !== 0) return n;
   }
-  // Compute from raw bookings if pre-computed not available
-  const totalIncUSD = (p.bookings||[]).reduce((s,b) => s + (b.usd||0), 0);
-  const totalIncGHS = (p.bookings||[]).reduce((s,b) => s + (b.ghs||0), 0);
-  const twgPct = ((p.twgPct || 15)) / 100;
+  return 0;
+}
+
+function _bookingGHS(b) {
+  if (!b || typeof b !== 'object') return 0;
+  const candidates = [
+    b.ghs, b.GHS, b.ghsAmount, b.ghs_amount,
+    b.amountGHS, b.amount_ghs,
+    b.totalGHS, b.total_ghs,
+    b.rental_income_ghs, b.rentalIncomeGHS,
+    b.revenueGHS,
+  ];
+  for (const v of candidates) {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n !== 0) return n;
+  }
+  return 0;
+}
+
+function _expenseUSD(e) {
+  if (!e || typeof e !== 'object') return 0;
+  const candidates = [e.usd, e.USD, e.amountUSD, e.amount_usd, e.amount, e.Amount, e.cost, e.costUSD];
+  for (const v of candidates) {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n !== 0) return n;
+  }
+  return 0;
+}
+
+function _expenseGHS(e) {
+  if (!e || typeof e !== 'object') return 0;
+  const candidates = [e.ghs, e.GHS, e.amountGHS, e.amount_ghs, e.costGHS];
+  for (const v of candidates) {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n !== 0) return n;
+  }
+  return 0;
+}
+
+function computeProperty(p) {
+  // ALWAYS compute from raw booking/expense rows as the source of truth.
+  // Server pre-computed aggregates (p.totalIncUSD etc.) may be stale, zero,
+  // or use a different field-mapping — never trust them over row-level data.
+  const bookings = p.bookings || [];
+  const expenses = p.expenses || [];
+
+  // Sum booking revenue using field-name aliasing so we find the amount
+  // regardless of how the Apps Script column headers happen to be named.
+  let totalIncUSD = 0, totalIncGHS = 0;
+  for (const b of bookings) {
+    totalIncUSD += _bookingUSD(b);
+    totalIncGHS += _bookingGHS(b);
+  }
+  totalIncUSD = Math.round(totalIncUSD * 100) / 100;
+  totalIncGHS = Math.round(totalIncGHS * 100) / 100;
+
+  // If raw bookings yielded $0 and the server has a non-zero aggregate,
+  // fall back to server value (handles case where booking detail rows absent).
+  if (totalIncUSD === 0 && p.totalIncUSD && p.totalIncUSD > 0) {
+    totalIncUSD = p.totalIncUSD;
+    console.warn('[Wawa] computeProperty: booking rows summed to 0, using server totalIncUSD =', totalIncUSD, 'for', p.id);
+  }
+  if (totalIncGHS === 0 && p.totalIncGHS && p.totalIncGHS > 0) {
+    totalIncGHS = p.totalIncGHS;
+    console.warn('[Wawa] computeProperty: booking rows summed to 0, using server totalIncGHS =', totalIncGHS, 'for', p.id);
+  }
+
+  const twgPct  = ((p.twgPct || 15)) / 100;
   const cogsUSD = Math.round(totalIncUSD * twgPct * 100) / 100;
   const cogsGHS = Math.round(totalIncGHS * twgPct * 100) / 100;
-  const expUSD  = (p.expenses||[]).reduce((s,e) => s + (e.usd||0), 0);
-  const expGHS  = (p.expenses||[]).reduce((s,e) => s + (e.ghs||0), 0);
-  const netUSD  = Math.round((totalIncUSD - cogsUSD - expUSD) * 100) / 100;
-  const netGHS  = Math.round((totalIncGHS - cogsGHS - expGHS) * 100) / 100;
-  const fxRate  = p.fxRate || 11;
+
+  let expUSD = 0, expGHS = 0;
+  for (const e of expenses) {
+    expUSD += _expenseUSD(e);
+    expGHS += _expenseGHS(e);
+  }
+  expUSD = Math.round(expUSD * 100) / 100;
+  expGHS = Math.round(expGHS * 100) / 100;
+
+  const netUSD = Math.round((totalIncUSD - cogsUSD - expUSD) * 100) / 100;
+  const netGHS = Math.round((totalIncGHS - cogsGHS - expGHS) * 100) / 100;
+
+  const fxRate = p.fxRate || 11;
   if (!p.fxRate) console.warn('[Wawa] Missing fxRate for property', p.id, '— using fallback 11 GHS/USD');
-  const ghsConvUSD = Math.round((netGHS / fxRate) * 100) / 100;
+
+  const ghsConvUSD  = Math.round((netGHS / fxRate) * 100) / 100;
   const ownerPayout = Math.round((netUSD + ghsConvUSD) * 100) / 100;
+
   return { totalIncUSD, totalIncGHS, cogsUSD, cogsGHS, expUSD, expGHS, netUSD, netGHS, ghsConvUSD, ownerPayout };
 }
 
@@ -905,7 +979,6 @@ function logout() {
   // reset tab state
   document.getElementById('tab-statements').classList.add('on');
   document.getElementById('tab-analytics').classList.remove('on');
-  document.getElementById('tab-audit').classList.remove('on');
   // reset all global data state so re-login starts fresh
   Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
   Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
@@ -1177,7 +1250,7 @@ function buildStatement(p, c, _activePeriod) {
     </div>
     <div class="fx-row">
       <span>GHS → USD conversion @ rate <b>${p.fxRate || '11 (estimated)'}</b>${!p.fxRate ? ' ⚠' : ''}</span>
-      <span style="font-family:'Work Sans',sans-serif;font-size:11px;color:var(--green);font-weight:600">+${fmtUSD(c.ghsConvUSD)}</span>
+      <span style="font-family:'Work Sans',sans-serif;font-size:11px;color:${c.ghsConvUSD>=0?'var(--green)':'var(--red)'};font-weight:600">${c.ghsConvUSD>=0?'+'+fmtUSD(c.ghsConvUSD):fmtUSD(c.ghsConvUSD)}</span>
       <span style="color:var(--ink3)">${p.fxDate || ''}</span>
     </div>
     <div class="net-row payout"><span>TOTAL OWNER PAYOUT</span><span class="nr">${fmtUSD(c.ownerPayout)}</span></div>
@@ -1409,7 +1482,7 @@ function downloadPDF() {
   </div>
   <div class="fx-row">
     <span>GHS → USD conversion @ rate <b>${p.fxRate || '11 (est.)'}</b>${!p.fxRate ? ' ⚠' : ''} · ${p.fxDate || ''}</span>
-    <span style="color:#1a5436;font-weight:600">+$${c.ghsConvUSD.toFixed(2)}</span>
+    <span style="color:${c.ghsConvUSD>=0?'#1a5436':'#7a1f1f'};font-weight:600">${c.ghsConvUSD>=0?'+'+fmtUSD(c.ghsConvUSD):fmtUSD(c.ghsConvUSD)}</span>
   </div>
   <div class="net-row payout">
     <span>TOTAL OWNER PAYOUT</span>
@@ -1659,15 +1732,26 @@ function toggleFilterDropdown(which) {
 }
 
 function togglePeriodFilter(label) {
-  // Never allow deselecting the last period
-  if (filterPeriods.has(label) && filterPeriods.size === 1) return;
-  if (filterPeriods.has(label)) filterPeriods.delete(label);
-  else filterPeriods.add(label);
-  // Sync hidden period-sel to primary (most recent) selected period
+  // Exclusive selection: clicking a period replaces the current selection.
+  // This prevents stale months accumulating when the user picks a new period.
+  // (Multi-select via the pill × button removes an individual period from an
+  //  existing multi-selection, so we only clear when adding a new period.)
+  if (!filterPeriods.has(label)) {
+    filterPeriods.clear();   // replace — don't accumulate
+    filterPeriods.add(label);
+    // Uncheck all period checkboxes, then re-check the newly selected one
+    document.querySelectorAll('[data-period]').forEach(cb => {
+      const checked = cb.dataset.period === label;
+      cb.checked = checked;
+      cb.closest('.filter-popup-item')?.classList.toggle('checked', checked);
+    });
+  }
+  // If they clicked the already-selected period, do nothing (keep it selected)
+  // Sync hidden period-sel to the selected period
   const primary = PERIOD_LABELS.find(l => filterPeriods.has(l)) || 'January 2026';
   const sel = document.getElementById('period-sel');
   if (sel) sel.value = primary;
-  // Ensure data loaded for all selected periods, then re-render both tabs
+  // Load data for selected period(s) then re-render
   const sorted = PERIOD_LABELS.filter(l => filterPeriods.has(l));
   _ensurePeriodsLoaded(sorted).then(() => {
     renderFilteredTable();
@@ -1902,12 +1986,9 @@ const _activeCharts = {};
 function showAdminTab(tab) {
   document.getElementById('tab-statements').classList.toggle('on', tab === 'statements');
   document.getElementById('tab-analytics').classList.toggle('on', tab === 'analytics');
-  document.getElementById('tab-audit').classList.toggle('on', tab === 'audit');
   document.getElementById('admin-view').style.display      = tab === 'statements' ? 'block' : 'none';
   document.getElementById('analytics-view').style.display  = tab === 'analytics'  ? 'block' : 'none';
-  document.getElementById('audit-view').style.display      = tab === 'audit'       ? 'block' : 'none';
   if (tab === 'analytics') renderAnalytics();
-  if (tab === 'audit') renderAuditView();
 }
 
 function _destroyChart(id) {
