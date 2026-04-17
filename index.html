@@ -40,9 +40,6 @@ body{font-family:'Work Sans',sans-serif;background:var(--paper);color:var(--ink)
 .auth-logo{margin-bottom:20px;}
 
 .auth-tagline{font-size:11px;color:var(--ink3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:32px;}
-.tabs{display:flex;background:var(--paper2);border-radius:7px;padding:3px;margin-bottom:26px;gap:3px;}
-.tab{flex:1;padding:7px;border:none;background:transparent;border-radius:5px;cursor:pointer;font-family:'Work Sans',sans-serif;font-size:12px;font-weight:500;color:var(--ink3);transition:all .18s;}
-.tab.on{background:#2c1f14;color:var(--paper);}
 .field{margin-bottom:14px;}
 .field label{display:block;font-size:11px;font-weight:600;color:var(--ink3);margin-bottom:5px;letter-spacing:.4px;text-transform:uppercase;}
 .field input,.field select{width:100%;padding:10px 13px;border:1.5px solid var(--paper3);border-radius:7px;font-family:'Work Sans',sans-serif;font-size:13px;background:white;color:var(--ink);outline:none;transition:border-color .18s;}
@@ -185,13 +182,6 @@ tbody td{padding:11px 14px;font-size:12px;}
 .chip-btn:hover{border-color:var(--gold);background:var(--gold-pale);color:var(--ink);}
 .chip-btn.sent{border-color:var(--green);background:var(--green-bg);color:var(--green);pointer-events:none;}
 
-/* ── OWNER VIEW ── */
-#owner-view{display:none;padding:36px 40px;max-width:860px;margin:0 auto;}
-.owner-hero{background:#2c1f14;border-radius:var(--r);padding:28px 32px;margin-bottom:0;display:flex;align-items:center;justify-content:space-between;}
-.owner-hero h2{font-family:'Work Sans',sans-serif;font-size:26px;font-weight:600;color:white;letter-spacing:-.3px;}
-.owner-hero p{font-size:12px;color:rgba(246,243,237,.4);margin-top:3px;}
-.owner-payout{font-family:'Work Sans',sans-serif;font-size:34px;font-weight:700;color:var(--gold);}
-.payout-lbl{font-size:10px;color:rgba(246,243,237,.4);text-align:right;margin-top:2px;}
 .stmt-cards{display:flex;flex-direction:column;gap:8px;}
 .stmt-card{background:white;border-radius:var(--r);padding:14px 20px;box-shadow:var(--shadow);border:1px solid var(--paper3);display:flex;align-items:center;justify-content:space-between;transition:box-shadow .18s;cursor:pointer;}
 .stmt-card:hover{box-shadow:var(--shadow-lg);}
@@ -355,21 +345,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
 .alert-card.up .alert-change{color:var(--green);}
 .alert-card.dn .alert-change{color:var(--red);}
 
-/* ── OWNER YTD STRIP ── */
-.owner-ytd-strip{background:linear-gradient(135deg,#2c1f14,#3d2510);border-radius:var(--r);padding:18px 24px;margin-bottom:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;}
-.owner-ytd-cell{padding:0 14px;border-left:1px solid rgba(201,151,26,.18);}
-.owner-ytd-cell:first-child{border-left:none;padding-left:0;}
-.owner-ytd-cell .ytd-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:rgba(246,243,237,.32);font-weight:700;margin-bottom:5px;}
-.owner-ytd-cell .ytd-val{font-size:17px;font-weight:700;color:var(--gold);}
-.owner-ytd-cell .ytd-sub{font-size:10px;color:rgba(246,243,237,.28);margin-top:2px;}
-
-/* ── OWNER ANALYTICS ── */
-#owner-analytics{margin-top:20px;}
-.owner-cmp-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--paper3);}
-.owner-cmp-table th{background:var(--paper2);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);border-bottom:1px solid var(--paper3);}
-.owner-cmp-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--paper2);color:var(--ink2);}
-.owner-cmp-table tr:last-child td{border-bottom:none;}
-
 /* ── AUDIT LOG ── */
 #audit-view{display:none;padding:36px 40px;max-width:1200px;margin:0 auto;}
 .audit-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--paper3);}
@@ -396,33 +371,11 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
 <div id="auth">
   <div class="auth-card">
     <div class="auth-logo"><img src="data:image/png;base64,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" alt="wawa." style="height:44px;display:block;"></div>
-    <div class="auth-tagline" style="letter-spacing:.8px;font-size:10px;text-transform:uppercase;color:var(--ink3)">Owner Statement Portal</div>
-    <div class="tabs">
-      <button class="tab on" onclick="setRole('admin')">Admin</button>
-      <button class="tab" onclick="setRole('owner')">Property Owner</button>
-    </div>
-    <div id="admin-fields">
-      <div class="field"><label>Email</label><input type="email" value="admin@wawagroup.com"/></div>
-      <div class="field"><label>Password</label><input type="password" value="••••••••"/></div>
-    </div>
-    <div id="owner-fields" style="display:none">
-      <div class="field"><label>Select owner</label>
-        <select id="owner-sel">
-          <option value="chelsea">Chelsea Townhouse</option>
-          <option value="oasis">Oasis</option>
-          <option value="lokko">Lokko Serene</option>
-          <option value="broadway">The Broadway</option>
-          <option value="mona_lisa">The Mona Lisa</option>
-          <option value="eden">The Eden</option>
-          <option value="urban_farmhouse">The Urban Farmhouse</option>
-          <option value="ocean_heights">Ocean Heights</option>
-          <option value="nshornaa">Nshornaa</option>
-        </select>
-      </div>
-      <div class="field"><label>Access code</label><input type="password" value="1234"/></div>
-    </div>
+    <div class="auth-tagline" style="letter-spacing:.8px;font-size:10px;text-transform:uppercase;color:var(--ink3)">Administration Portal</div>
+    <div class="field"><label>Email</label><input type="email" id="admin-email" placeholder="admin@wawagroup.com"/></div>
+    <div class="field"><label>Password</label><input type="password" id="admin-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"/></div>
     <button class="btn-primary" onclick="login()">Sign in →</button>
-    <div class="auth-hint" style="color:var(--ink3)">Demo credentials pre-filled</div>
+    <div class="auth-hint" style="color:var(--ink3)">wawa. Group internal use only</div>
   </div>
 </div>
 
@@ -580,18 +533,6 @@ hr{border:none;border-top:1px solid var(--paper3);margin:18px 0;}
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- OWNER VIEW -->
-  <div id="owner-view">
-    <div class="owner-hero">
-      <div><h2 id="owner-hello">Welcome back</h2><p id="owner-prop">Your property</p></div>
-      <div style="text-align:right"><div class="owner-payout" id="owner-net">—</div><div class="payout-lbl" id="owner-payout-lbl">Net payout</div></div>
-    </div>
-    <div id="owner-ytd"></div>
-    <div class="sec-title" style="margin-bottom:12px">Statements</div>
-    <div class="stmt-cards" id="owner-cards"></div>
-    <div id="owner-analytics"></div>
   </div>
 
   <!-- ANALYTICS VIEW -->
@@ -940,32 +881,18 @@ function fmtUSD(n) { return n === 0 ? '$0.00' : usd(n); }
 function fmtGHS(n) { return n === 0 ? 'GHS 0.00' : ghs(n); }
 
 // ── AUTH ──
-let role = 'admin', currentProp = null;
-
-function setRole(r) {
-  role = r;
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('on', (i===0&&r==='admin')||(i===1&&r==='owner')));
-  document.getElementById('admin-fields').style.display = r==='admin' ? '' : 'none';
-  document.getElementById('owner-fields').style.display = r==='owner' ? '' : 'none';
-}
+let currentProp = null;
 
 function login() {
   document.getElementById('auth').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  auditLog('LOGIN', role);
-  if (role === 'admin') {
-    document.getElementById('topbar-name').textContent = 'Admin';
-    document.getElementById('admin-sub-nav').style.display = 'flex';
-    document.getElementById('admin-view').style.display = 'block';
-    renderAdminTable();
-    const period = periodToCode(document.getElementById('period-sel').value || 'January 2026');
-    loadLiveData(period).then(() => loadAllPeriods());
-  } else {
-    const pid = document.getElementById('owner-sel').value;
-    document.getElementById('topbar-name').textContent = pid;
-    document.getElementById('owner-view').style.display = 'block';
-    renderOwnerView();
-  }
+  auditLog('LOGIN', 'admin');
+  document.getElementById('topbar-name').textContent = 'Admin';
+  document.getElementById('admin-sub-nav').style.display = 'flex';
+  document.getElementById('admin-view').style.display = 'block';
+  renderAdminTable();
+  const period = periodToCode(document.getElementById('period-sel').value || 'January 2026');
+  loadLiveData(period).then(() => loadAllPeriods());
 }
 
 function logout() {
@@ -974,8 +901,6 @@ function logout() {
   document.getElementById('admin-view').style.display = 'none';
   document.getElementById('admin-sub-nav').style.display = 'none';
   document.getElementById('analytics-view').style.display = 'none';
-  document.getElementById('audit-view').style.display = 'none';
-  document.getElementById('owner-view').style.display = 'none';
   // reset tab state
   document.getElementById('tab-statements').classList.add('on');
   document.getElementById('tab-analytics').classList.remove('on');
@@ -1550,148 +1475,6 @@ async function sendVia(ch) {
   if(activeProp){statuses[activeProp.id]='sent';renderAdminTable();}
   auditLog('SENT_VIA_' + ch.toUpperCase(), activeProp?.name || '');
   notify(labels[ch]||'Sent');
-}
-
-// ── OWNER VIEW ──
-async function renderOwnerView() {
-  const pid = document.getElementById('owner-sel').value;
-  const list = document.getElementById('owner-cards');
-  const periods = ['March 2026','February 2026','January 2026','December 2025','November 2025'];
-
-  // Show loading state
-  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink3)">Loading your statements…</div>';
-  document.getElementById('owner-net').textContent = '—';
-
-  // Fetch all periods for this owner
-  const results = [];
-  let failedPeriods = 0;
-  for (const per of periods) {
-    try {
-      const code = periodToCode(per);
-      const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${code}`);
-      const json = await res.json();
-      if (json.ok && json.data) results.push({ period: per, data: json.data });
-      else failedPeriods++;
-    } catch(e) { failedPeriods++; }
-  }
-
-  if (failedPeriods > 0 && results.length > 0) {
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:#faeaea;border:1px solid #7a1f1f;border-radius:8px;padding:10px 16px;font-size:12px;color:#7a1f1f;margin-bottom:12px;';
-    banner.textContent = `⚠ ${failedPeriods} period${failedPeriods>1?'s':''} could not be loaded — figures may be incomplete`;
-    const ownerView = document.getElementById('owner-view');
-    if (ownerView) ownerView.insertBefore(banner, ownerView.firstChild.nextSibling);
-  }
-
-  if (results.length === 0) {
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink3)">No data found for this property.</div>';
-    return;
-  }
-
-  // Use first result as current
-  const first = results[0].data;
-  currentProp = first;
-  PROPERTIES[pid] = first;
-  document.getElementById('topbar-name').textContent = first.name || pid;
-  document.getElementById('owner-hello').textContent = 'Welcome, ' + (first.name || pid);
-  // Occupancy pill on hero
-  const latestCode = periodToCode(results[0].period);
-  const occData = computeOccupancyMetrics(first, latestCode);
-  const occCls = occData.occupancy >= 70 ? 'occ-high' : occData.occupancy >= 40 ? 'occ-mid' : 'occ-low';
-  document.getElementById('owner-prop').innerHTML = (first.property || pid) + ` <span class="occ-pill ${occCls}" style="margin-left:6px">${occData.occupancy.toFixed(0)}% occ.</span>`;
-  document.getElementById('owner-net').textContent = fmtUSD(first.ownerPayout || 0);
-  document.getElementById('owner-payout-lbl').textContent = 'Net payout · ' + results[0].period;
-
-  // ── YTD Strip ──
-  const ytdEarned   = results.reduce((s, r) => s + (r.data.ownerPayout || 0), 0);
-  const ytdBookings = results.reduce((s, r) => s + (r.data.bookings || []).length, 0);
-  const bestMonthR  = results.reduce((best, r) => (r.data.ownerPayout || 0) > (best.data.ownerPayout || 0) ? r : best, results[0]);
-  const avgMonthly  = results.length > 0 ? ytdEarned / results.length : 0;
-  const ytdEl = document.getElementById('owner-ytd');
-  if (ytdEl) {
-    ytdEl.innerHTML = `<div class="owner-ytd-strip">
-      <div class="owner-ytd-cell"><div class="ytd-lbl">YTD Total Earned</div><div class="ytd-val">${fmtUSD(ytdEarned)}</div><div class="ytd-sub">Net owner payouts</div></div>
-      <div class="owner-ytd-cell"><div class="ytd-lbl">YTD Bookings</div><div class="ytd-val">${ytdBookings}</div><div class="ytd-sub">Across ${results.length} periods</div></div>
-      <div class="owner-ytd-cell"><div class="ytd-lbl">Best Month</div><div class="ytd-val" style="font-size:14px">${bestMonthR.period.split(' ')[0].slice(0,3) + ' ' + bestMonthR.period.split(' ')[1]}</div><div class="ytd-sub">${fmtUSD(bestMonthR.data.ownerPayout || 0)}</div></div>
-    </div>`;
-  }
-
-  list.innerHTML = results.map(({ period, data }) => {
-    const stKey = pid + '_' + periodToCode(period);
-    const st = statuses[stKey] || statuses[pid] || 'pending';
-    const badge = st==='sent'
-      ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
-      : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
-    return `<div class="stmt-card" onclick="loadAndOpenStatement('${pid}','${periodToCode(period)}')">
-      <div><h3>${period}</h3><p>${(data.bookings||[]).length} bookings · ${data.property||pid}</p></div>
-      <div style="display:flex;align-items:center;gap:16px">${badge}<div class="stmt-card-amt">${fmtUSD(data.ownerPayout||0)}</div><span style="color:var(--ink3);font-size:13px">→</span></div>
-    </div>`;
-  }).join('');
-
-  // ── Owner Analytics: Income Chart + Period Comparison Table ──
-  const anlEl = document.getElementById('owner-analytics');
-  if (anlEl && results.length > 0) {
-    const revResults = [...results].reverse();
-    anlEl.innerHTML = `
-      <div class="sec-title" style="margin-top:28px;margin-bottom:16px;font-size:11px">Performance Overview</div>
-      <div class="sec-title" style="margin-top:0;margin-bottom:12px">Income History</div>
-      <div class="chart-card-wide" style="margin-bottom:20px">
-        <div class="chart-col-title">Monthly Payouts (USD)</div>
-        <div class="chart-col-sub">Across ${results.length} loaded period${results.length!==1?'s':''}</div>
-        <div style="height:200px"><canvas id="owner-income-chart"></canvas></div>
-      </div>
-      <div class="sec-title" style="margin-bottom:10px">Period Comparison</div>
-      <table class="owner-cmp-table">
-        <thead><tr><th>Period</th><th>Bookings</th><th>Income USD</th><th>Payout</th><th>vs Previous</th></tr></thead>
-        <tbody>
-          ${results.map(({ period, data }, idx) => {
-            const prev = results[idx + 1];
-            const curPay = data.ownerPayout || 0;
-            const prevPay = prev ? (prev.data.ownerPayout || 0) : null;
-            const diff = prevPay !== null ? curPay - prevPay : null;
-            const diffPct = prevPay && prevPay !== 0 ? ((diff / prevPay) * 100).toFixed(1) : null;
-            const diffHtml = diff !== null
-              ? `<span style="color:${diff>=0?'var(--green)':'var(--red)'};font-weight:600">${diff>=0?'▲':'▼'} ${diffPct}%</span>`
-              : '<span style="color:var(--ink3)">—</span>';
-            return `<tr>
-              <td style="font-weight:600">${period}</td>
-              <td>${(data.bookings||[]).length}</td>
-              <td class="pos">${fmtUSD(data.totalIncUSD || 0)}</td>
-              <td class="pos" style="font-weight:700">${fmtUSD(curPay)}</td>
-              <td>${diffHtml}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>`;
-    // Render bar chart after DOM insertion
-    setTimeout(() => {
-      _mkBar('owner-income-chart',
-        revResults.map(r => r.period.split(' ')[0].slice(0,3) + " '" + r.period.slice(-2)),
-        [{ label:'Net Payout (USD)', data: revResults.map(r => r.data.ownerPayout || 0),
-           backgroundColor:'#c9971a', borderRadius:4, borderSkipped:false }]
-      );
-    }, 50);
-  }
-}
-
-async function loadAndOpenStatement(pid, period) {
-  try {
-    const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${period}`);
-    const json = await res.json();
-    if (json.ok && json.data) {
-      PROPERTIES[pid] = json.data;
-      PERIOD_DATA[period] = PERIOD_DATA[period] || [];
-      // Update or insert this property's data in the period cache
-      const idx = PERIOD_DATA[period].findIndex(p => p.id === pid);
-      if (idx >= 0) PERIOD_DATA[period][idx] = json.data; else PERIOD_DATA[period].push(json.data);
-      currentProp = json.data;
-      // Sync period-sel so openStatement builds the modal with the correct period label
-      const periodLabel = PERIOD_LABELS.find(l => periodToCode(l) === period) || 'January 2026';
-      const sel = document.getElementById('period-sel');
-      if (sel) sel.value = periodLabel;
-      openStatement(pid, json.data);
-    }
-  } catch(e) { notify('Could not load statement: ' + e.message); }
 }
 
 // ── DYNAMIC FILTER STATE ────────────────────────────────────────────
