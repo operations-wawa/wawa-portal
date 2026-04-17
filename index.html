@@ -616,7 +616,7 @@ try { Object.assign(STATEMENT_VERSIONS, JSON.parse(localStorage.getItem('wawa_st
 const AUDIT_LOG = [];
 
 function auditLog(action, detail) {
-  const entry = { ts: new Date().toISOString(), action, detail, user: role || 'Admin' };
+  const entry = { ts: new Date().toISOString(), action, detail, user: 'Admin' };
   AUDIT_LOG.push(entry);
   try {
     localStorage.setItem('wawa_audit', JSON.stringify(AUDIT_LOG.slice(-200)));
@@ -912,7 +912,7 @@ function logout() {
   filterProps.clear();
   activeProp = null;
   currentProp = null;
-  auditLog('LOGOUT', role);
+  auditLog('LOGOUT', 'admin');
 }
 
 // ── ADMIN TABLE ──
