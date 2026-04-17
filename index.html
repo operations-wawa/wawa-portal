@@ -732,11 +732,16 @@ async function loadLiveData(period) {
     if (_diagProp) {
       const _b0 = _diagProp.bookings[0];
       const _keys = Object.keys(_b0).join(', ');
+      const _usdRaw = JSON.stringify(_b0.usd ?? _b0.USD ?? '—');
+      const _ghsRaw = JSON.stringify(_b0.ghs ?? _b0.GHS ?? '—');
       console.group('🔍 WAWA DIAG — first booking object');
       console.log('keys:', _keys);
-      console.log('raw:', JSON.stringify(_b0, null, 2));
+      console.log('usd raw value:', _b0.usd ?? _b0.USD);
+      console.log('ghs raw value:', _b0.ghs ?? _b0.GHS);
+      console.log('full object:', JSON.stringify(_b0, null, 2));
       console.groupEnd();
-      addLog(`🔍 Booking fields detected: ${_keys}`, 'info');
+      addLog(`🔍 Booking fields: ${_keys}`, 'info');
+      addLog(`🔍 usd=${_usdRaw} | ghs=${_ghsRaw}`, 'info');
     } else {
       console.warn('🔍 WAWA DIAG — no property has bookings in this payload');
       addLog('🔍 No bookings found in payload for this period.', 'info');
@@ -807,8 +812,17 @@ const statuses = {};
 const OWNER_IDS = ['chelsea','oasis','lokko','broadway','mona_lisa','eden','urban_farmhouse','ocean_heights','nshornaa'];
 
 // ── Booking field-name aliasing helpers ──────────────────────────
-// Apps Script may return booking revenue under many different column names.
-// We try every known alias and return the first numeric, non-NaN value found.
+// Apps Script may return booking revenue under many different column names,
+// and values may be numbers OR currency-formatted strings ("$150.00", "GHS 500").
+// _parseNum() strips currency symbols/commas before parsing.
+function _parseNum(v) {
+  if (v === null || v === undefined || v === '') return NaN;
+  if (typeof v === 'number') return v;
+  // Strip currency symbols, spaces, commas — keep digits, dot, minus
+  const cleaned = String(v).replace(/[^0-9.\-]/g, '');
+  return cleaned === '' ? NaN : parseFloat(cleaned);
+}
+
 let _diaggedUSD = false;
 function _bookingUSD(b) {
   if (!b || typeof b !== 'object') return 0;
@@ -824,14 +838,15 @@ function _bookingUSD(b) {
     b.booking_amount, b.booking_income,
   ];
   for (const v of candidates) {
-    const n = parseFloat(v);
+    const n = _parseNum(v);
     if (!isNaN(n) && n !== 0) return n;
   }
   // One-time diagnostic: if we still can't find a value, log ALL booking keys + values
   if (!_diaggedUSD && b && typeof b === 'object') {
     _diaggedUSD = true;
-    console.warn('⚠ _bookingUSD: no known field matched. Actual booking keys & values:');
+    console.warn('⚠ _bookingUSD: no field matched after currency-strip. Actual booking keys & values:');
     Object.entries(b).forEach(([k, v]) => console.warn(`  ${k}: ${JSON.stringify(v)}`));
+    addLog('⚠ USD field present but value unparseable — check console for details', 'err');
   }
   return 0;
 }
@@ -848,12 +863,12 @@ function _bookingGHS(b) {
     b.income_ghs, b.incomeGHS, b.rate_ghs, b.total_ghs,
   ];
   for (const v of candidates) {
-    const n = parseFloat(v);
+    const n = _parseNum(v);
     if (!isNaN(n) && n !== 0) return n;
   }
   if (!_diaggedGHS && b && typeof b === 'object') {
     _diaggedGHS = true;
-    console.warn('⚠ _bookingGHS: no known field matched. Actual booking keys & values:');
+    console.warn('⚠ _bookingGHS: no field matched after currency-strip. Actual booking keys & values:');
     Object.entries(b).forEach(([k, v]) => console.warn(`  ${k}: ${JSON.stringify(v)}`));
   }
   return 0;
@@ -863,7 +878,7 @@ function _expenseUSD(e) {
   if (!e || typeof e !== 'object') return 0;
   const candidates = [e.usd, e.USD, e.amountUSD, e.amount_usd, e.amount, e.Amount, e.cost, e.costUSD];
   for (const v of candidates) {
-    const n = parseFloat(v);
+    const n = _parseNum(v);
     if (!isNaN(n) && n !== 0) return n;
   }
   return 0;
@@ -873,7 +888,7 @@ function _expenseGHS(e) {
   if (!e || typeof e !== 'object') return 0;
   const candidates = [e.ghs, e.GHS, e.amountGHS, e.amount_ghs, e.costGHS];
   for (const v of candidates) {
-    const n = parseFloat(v);
+    const n = _parseNum(v);
     if (!isNaN(n) && n !== 0) return n;
   }
   return 0;
