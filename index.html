@@ -539,6 +539,18 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
         <tbody id="admin-tbody"></tbody>
       </table>
     </div>
+    <!-- Raw Data Inspector -->
+    <div id="raw-inspector" style="display:none;margin-top:16px;background:var(--paper2);border:1px solid var(--br2);border-radius:var(--r);overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--br);background:var(--nv3);">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.7px;color:var(--gold);text-transform:uppercase;">Raw Booking Data Inspector</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="raw-prop-sel" onchange="renderRawInspector()" style="background:var(--paper);border:1px solid var(--br2);color:var(--ink);padding:3px 8px;border-radius:4px;font-size:11px;"></select>
+          <button onclick="document.getElementById('raw-inspector').style.display='none'" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:16px;line-height:1;">×</button>
+        </div>
+      </div>
+      <div id="raw-inspector-body" style="padding:12px;overflow-x:auto;max-height:320px;overflow-y:auto;font-size:11px;font-family:monospace;"></div>
+    </div>
+
     <!-- Activity Log -->
     <div class="log" id="log-panel" style="margin-top:16px;">
       <div class="sec-title" style="margin-bottom:10px;font-size:10px;letter-spacing:.7px;">
@@ -727,24 +739,22 @@ async function loadLiveData(period) {
     if (!json.ok) { addLog('Error: ' + json.error, 'err'); return; }
     Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
     json.data.forEach(o => { PROPERTIES[o.id] = o; statuses[o.id] = 'pending'; });
-    // ── DIAGNOSTIC: log first booking to reveal actual field names ──
+    // Cache raw payload globally for inspection
+    window.WAWA_RAW = json.data;
+    // ── DIAGNOSTIC: show first booking's actual field values ──
     const _diagProp = json.data.find(o => (o.bookings||[]).length > 0);
     if (_diagProp) {
       const _b0 = _diagProp.bookings[0];
-      const _keys = Object.keys(_b0).join(', ');
-      const _usdRaw = JSON.stringify(_b0.usd ?? _b0.USD ?? '—');
-      const _ghsRaw = JSON.stringify(_b0.ghs ?? _b0.GHS ?? '—');
-      console.group('🔍 WAWA DIAG — first booking object');
-      console.log('keys:', _keys);
-      console.log('usd raw value:', _b0.usd ?? _b0.USD);
-      console.log('ghs raw value:', _b0.ghs ?? _b0.GHS);
-      console.log('full object:', JSON.stringify(_b0, null, 2));
+      const _usdRaw = _b0.usd ?? _b0.USD ?? '—';
+      const _ghsRaw = _b0.ghs ?? _b0.GHS ?? '—';
+      const _usdParsed = _parseNum(_usdRaw);
+      const _ghsParsed = _parseNum(_ghsRaw);
+      console.group('🔍 WAWA DIAG — first booking');
+      console.table(_b0);
       console.groupEnd();
-      addLog(`🔍 Booking fields: ${_keys}`, 'info');
-      addLog(`🔍 usd=${_usdRaw} | ghs=${_ghsRaw}`, 'info');
+      addLog(`🔍 Sample booking — usd raw: "${_usdRaw}" → parsed: ${_usdParsed} | ghs raw: "${_ghsRaw}" → parsed: ${_ghsParsed}`, 'info');
     } else {
-      console.warn('🔍 WAWA DIAG — no property has bookings in this payload');
-      addLog('🔍 No bookings found in payload for this period.', 'info');
+      addLog('🔍 No bookings in this period payload.', 'info');
     }
     // Store in multi-period cache
     PERIOD_DATA[period] = json.data;
@@ -811,66 +821,112 @@ const PROPERTIES = {};
 const statuses = {};
 const OWNER_IDS = ['chelsea','oasis','lokko','broadway','mona_lisa','eden','urban_farmhouse','ocean_heights','nshornaa'];
 
-// ── Booking field-name aliasing helpers ──────────────────────────
-// Apps Script may return booking revenue under many different column names,
-// and values may be numbers OR currency-formatted strings ("$150.00", "GHS 500").
-// _parseNum() strips currency symbols/commas before parsing.
+// ── Raw data storage — every API response is cached here for inspection ──
+window.WAWA_RAW = null;
+
+// ── Revenue overrides ─────────────────────────────────────────────
+// Stored in localStorage as { "chelsea|2026-01|Queenella Wisner|Jan 2 - Jan 6": {usd:150,ghs:0}, … }
+// These let the admin manually enter revenue when the sheet data has zeros.
+const REV_LS_KEY = 'wawa_rev_overrides_v1';
+function _revOverrides() {
+  try { return JSON.parse(localStorage.getItem(REV_LS_KEY) || '{}'); } catch { return {}; }
+}
+function _revKey(pid, period, b) {
+  return [pid, period, b.guest||'', b.displayDate||b.stayDates||b.rawDate||''].join('|');
+}
+function _getOverride(pid, period, b) {
+  return _revOverrides()[_revKey(pid, period, b)] || null;
+}
+function _setOverride(pid, period, b, usd, ghs) {
+  const all = _revOverrides();
+  all[_revKey(pid, period, b)] = { usd: parseFloat(usd)||0, ghs: parseFloat(ghs)||0 };
+  localStorage.setItem(REV_LS_KEY, JSON.stringify(all));
+}
+function _clearOverrides(pid, period) {
+  const all = _revOverrides();
+  Object.keys(all).filter(k => k.startsWith(pid + '|' + period + '|'))
+        .forEach(k => delete all[k]);
+  localStorage.setItem(REV_LS_KEY, JSON.stringify(all));
+}
+// Inject overrides into a property's booking rows before computing
+function _applyOverrides(p, period) {
+  if (!p || !p.bookings) return p;
+  const pid = p.id || '';
+  const bookings = p.bookings.map(b => {
+    const ov = _getOverride(pid, period, b);
+    if (ov) return Object.assign({}, b, { usd: ov.usd, ghs: ov.ghs });
+    return b;
+  });
+  return Object.assign({}, p, { bookings });
+}
+
+// ── Universal numeric parser ──────────────────────────────────────
+// Handles: numbers, "$1,250.00", "GHS 450", "1250", "1,250.50", "-50"
 function _parseNum(v) {
   if (v === null || v === undefined || v === '') return NaN;
   if (typeof v === 'number') return v;
-  // Strip currency symbols, spaces, commas — keep digits, dot, minus
-  const cleaned = String(v).replace(/[^0-9.\-]/g, '');
-  return cleaned === '' ? NaN : parseFloat(cleaned);
+  // Remove anything that isn't a digit, dot, or leading minus
+  const s = String(v).trim().replace(/[^0-9.\-]/g, '');
+  if (!s || s === '-' || s === '.') return NaN;
+  const n = parseFloat(s);
+  return isNaN(n) ? NaN : n;
 }
 
-let _diaggedUSD = false;
+// ── DIRECT booking value extractors ──────────────────────────────
+// Diagnostic confirmed fields ARE "usd" and "ghs". These functions read them
+// directly first. If still 0, we do a brute-force scan of ALL numeric fields
+// so we never miss the value regardless of unexpected field naming.
+
 function _bookingUSD(b) {
   if (!b || typeof b !== 'object') return 0;
-  const candidates = [
-    b.usd, b.USD, b.usdAmount, b.usd_amount,
-    b.amount, b.Amount, b.revenue, b.Revenue,
-    b.totalUSD, b.total_usd, b.totalAmount,
-    b.amountUSD, b.amount_usd,
-    b.nightlyRate, b.payout, b.ownerAmount,
-    b.rental_income_usd, b.rentalIncomeUSD,
-    b.booking_usd, b.bookingUSD, b.income, b.Income,
-    b.rate, b.Rate, b.price, b.Price, b.total, b.Total,
-    b.booking_amount, b.booking_income,
-  ];
-  for (const v of candidates) {
+
+  // 1. Direct known-field reads (diagnostic confirmed these exist)
+  const direct = [b.usd, b.USD, b.amount, b.revenue, b.income,
+                  b.total, b.price, b.rate, b.payout, b.ownerAmount,
+                  b.usdAmount, b.amountUSD, b.totalUSD, b.nightlyRate];
+  for (const v of direct) {
     const n = _parseNum(v);
-    if (!isNaN(n) && n !== 0) return n;
+    if (!isNaN(n) && n > 0) return n;
   }
-  // One-time diagnostic: if we still can't find a value, log ALL booking keys + values
-  if (!_diaggedUSD && b && typeof b === 'object') {
-    _diaggedUSD = true;
-    console.warn('⚠ _bookingUSD: no field matched after currency-strip. Actual booking keys & values:');
-    Object.entries(b).forEach(([k, v]) => console.warn(`  ${k}: ${JSON.stringify(v)}`));
-    addLog('⚠ USD field present but value unparseable — check console for details', 'err');
+
+  // 2. Brute-force: scan every field — skip obvious non-financial keys,
+  //    return first positive number found (USD amounts are typically > GHS)
+  const skip = new Set(['nights','ghs','GHS','id','property','guest','status','platform',
+                        'payment','currency','rawDate','stayDates','displayDate']);
+  let best = 0;
+  for (const [k, v] of Object.entries(b)) {
+    if (skip.has(k)) continue;
+    const n = _parseNum(v);
+    if (!isNaN(n) && n > 0 && n > best) best = n;
   }
+  if (best > 0) return best;
+
   return 0;
 }
 
-let _diaggedGHS = false;
 function _bookingGHS(b) {
   if (!b || typeof b !== 'object') return 0;
-  const candidates = [
-    b.ghs, b.GHS, b.ghsAmount, b.ghs_amount,
-    b.amountGHS, b.amount_ghs,
-    b.totalGHS, b.total_ghs,
-    b.rental_income_ghs, b.rentalIncomeGHS,
-    b.revenueGHS, b.booking_ghs, b.bookingGHS,
-    b.income_ghs, b.incomeGHS, b.rate_ghs, b.total_ghs,
-  ];
-  for (const v of candidates) {
+
+  // 1. Direct known-field reads
+  const direct = [b.ghs, b.GHS, b.ghsAmount, b.amountGHS,
+                  b.totalGHS, b.revenueGHS, b.incomeGHS];
+  for (const v of direct) {
     const n = _parseNum(v);
-    if (!isNaN(n) && n !== 0) return n;
+    if (!isNaN(n) && n > 0) return n;
   }
-  if (!_diaggedGHS && b && typeof b === 'object') {
-    _diaggedGHS = true;
-    console.warn('⚠ _bookingGHS: no field matched after currency-strip. Actual booking keys & values:');
-    Object.entries(b).forEach(([k, v]) => console.warn(`  ${k}: ${JSON.stringify(v)}`));
+
+  // 2. Brute-force: look for the field whose value is largest
+  //    (GHS amounts are typically much larger than USD)
+  const skip = new Set(['nights','usd','USD','id','property','guest','status','platform',
+                        'payment','currency','rawDate','stayDates','displayDate']);
+  let best = 0;
+  for (const [k, v] of Object.entries(b)) {
+    if (skip.has(k)) continue;
+    const n = _parseNum(v);
+    if (!isNaN(n) && n > best) best = n;
   }
+  if (best > 0) return best;
+
   return 0;
 }
 
@@ -1131,26 +1187,90 @@ async function openStatement(pid, preloaded) {
     else if (PROPERTIES[pid]) { activeProp = PROPERTIES[pid]; }
     else { notify('Error: ' + e.message); return; }
   }
-  const c = computeProperty(activeProp);
   const _activePeriod = document.getElementById('period-sel')?.value || 'January 2026';
-  document.getElementById('modal-title').textContent = activeProp.name + ' — ' + _activePeriod;
-  const vKey = pid + '_' + periodToCode(_activePeriod);
+  const _periodCode   = periodToCode(_activePeriod);
+  // Apply any locally-stored revenue overrides before computing
+  const _prop = _applyOverrides(activeProp, _periodCode);
+  const c = computeProperty(_prop);
+  document.getElementById('modal-title').textContent = _prop.name + ' — ' + _activePeriod;
+  const vKey = pid + '_' + _periodCode;
   const vInfo = STATEMENT_VERSIONS[vKey];
   const isSent = statuses[vKey] === 'sent' || statuses[pid] === 'sent';
   const vBadge = vInfo
     ? ` · v${vInfo.version} · ${isSent ? '✅ Sent' : 'Draft'} · ${new Date(vInfo.generatedAt).toLocaleString()}`
     : (isSent ? ' · ✅ Sent' : ' · Draft');
-  document.getElementById('modal-sub').textContent = (activeProp.bookings||[]).length + ' bookings · TWG fee ' + (activeProp.twgPct||15) + '%' + vBadge;
-  document.getElementById('modal-body').innerHTML = buildStatement(activeProp, c, _activePeriod);
+  // Warn if all booking revenues are still zero after overrides
+  const _hasRevenue = (_prop.bookings||[]).some(b => _bookingUSD(b) > 0 || _bookingGHS(b) > 0);
+  document.getElementById('modal-sub').textContent = (_prop.bookings||[]).length + ' bookings · TWG fee ' + (_prop.twgPct||15) + '%' + vBadge;
+  document.getElementById('modal-body').innerHTML = buildStatement(_prop, c, _activePeriod, _hasRevenue);
   document.getElementById('modal-bg').classList.add('open');
-  fetchAI(activeProp, c, _activePeriod);
+  fetchAI(_prop, c, _activePeriod);
 }
 
-function buildStatement(p, c, _activePeriod) {
+// ── Revenue inline editor ─────────────────────────────────────────
+let _revEditActive = false;
+let _revEditPid = '', _revEditPeriod = '';
+
+function toggleRevenueEdit(pid, period) {
+  _revEditPid = pid; _revEditPeriod = period;
+  const tbody = document.getElementById('rev-tbody');
+  const btn   = document.getElementById('rev-edit-btn');
+  if (!tbody || !btn) return;
+
+  if (!_revEditActive) {
+    // Switch to edit mode — replace USD/GHS cells with inputs
+    _revEditActive = true;
+    btn.textContent = '✓ Save Revenue';
+    btn.style.background = 'var(--green)';
+    tbody.querySelectorAll('tr[data-bi]').forEach(row => {
+      const usdCell = row.querySelector('.rev-usd-cell');
+      const ghsCell = row.querySelector('.rev-ghs-cell');
+      const usdVal  = parseFloat(usdCell.dataset.val) || 0;
+      const ghsVal  = parseFloat(ghsCell.dataset.val) || 0;
+      usdCell.innerHTML = `<input type="number" min="0" step="0.01" value="${usdVal||''}" placeholder="0.00"
+        style="width:80px;background:var(--paper);border:1px solid var(--br2);color:var(--ink);
+               padding:3px 6px;border-radius:4px;text-align:right;font-size:11px;"
+        class="rev-usd-input" oninput="recomputeRevTotals()">`;
+      ghsCell.innerHTML = `<input type="number" min="0" step="0.01" value="${ghsVal||''}" placeholder="0.00"
+        style="width:80px;background:var(--paper);border:1px solid var(--br2);color:var(--ink);
+               padding:3px 6px;border-radius:4px;text-align:right;font-size:11px;"
+        class="rev-ghs-input" oninput="recomputeRevTotals()">`;
+    });
+  } else {
+    // Save mode — persist values to localStorage, re-open statement
+    _revEditActive = false;
+    const prop = activeProp || PROPERTIES[pid];
+    if (prop && prop.bookings) {
+      tbody.querySelectorAll('tr[data-bi]').forEach((row, i) => {
+        const b   = prop.bookings[i];
+        const usd = parseFloat(row.querySelector('.rev-usd-input')?.value) || 0;
+        const ghs = parseFloat(row.querySelector('.rev-ghs-input')?.value) || 0;
+        if (usd > 0 || ghs > 0) _setOverride(pid, period, b, usd, ghs);
+      });
+      addLog(`Revenue overrides saved for ${prop.name} · ${period}`, 'ok');
+    }
+    // Re-render the statement with the saved values
+    openStatement(pid, prop);
+  }
+}
+
+function recomputeRevTotals() {
+  let totalUSD = 0, totalGHS = 0;
+  document.querySelectorAll('.rev-usd-input').forEach(el => totalUSD += parseFloat(el.value)||0);
+  document.querySelectorAll('.rev-ghs-input').forEach(el => totalGHS += parseFloat(el.value)||0);
+  const tu = document.getElementById('rev-total-usd');
+  const tg = document.getElementById('rev-total-ghs');
+  if (tu) tu.innerHTML = `<strong>${fmtUSD(totalUSD)}</strong>`;
+  if (tg) tg.innerHTML = `<strong>${fmtGHS(totalGHS)}</strong>`;
+}
+
+function buildStatement(p, c, _activePeriod, _hasRevenue) {
   _activePeriod = _activePeriod || 'January 2026';
   // Null-guards — never crash if data is missing
   const bookings = p.bookings || [];
   const expenses = p.expenses || [];
+  const _pid = p.id || '';
+  const _pcode = periodToCode(_activePeriod);
   // COGS per booking
   const cogsRows = bookings.map(b => {
     const _twgPct = (p.twgPct||15)/100;
@@ -1175,26 +1295,39 @@ function buildStatement(p, c, _activePeriod) {
     </div>
 
     <!-- RENTAL INCOME -->
-    <div class="sect-hd">Rental Income</div>
-    <table class="tx-table">
+    <div class="sect-hd" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Rental Income</span>
+      <button onclick="toggleRevenueEdit('${_pid}','${_pcode}')" id="rev-edit-btn"
+        style="font-size:11px;padding:3px 10px;background:var(--gold);color:#0d1b2a;border:none;border-radius:4px;cursor:pointer;font-weight:600;letter-spacing:.3px;">
+        ✎ Enter Revenue
+      </button>
+    </div>
+    ${!_hasRevenue ? `<div style="background:rgba(224,112,112,.12);border:1px solid rgba(224,112,112,.3);border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--red);">
+      ⚠ Revenue figures are missing from the Google Sheet — all booking amounts show $0.00.
+      Click <strong>✎ Enter Revenue</strong> above to manually enter figures for this period.
+    </div>` : ''}
+    <table class="tx-table" id="rev-table">
       <thead><tr>
-        <th>Guest</th><th>Stay Dates</th><th>Date</th><th>Channel</th>
+        <th>Guest</th><th>Stay Dates</th><th>Nights</th><th>Channel</th>
         <th class="r">USD</th><th class="r">GHS</th>
       </tr></thead>
-      <tbody>
-        ${bookings.map(b => `<tr>
-          <td>${b.guest}</td>
-          <td style="color:var(--ink3);font-size:11px">${b.stayDates||b.dates||''}</td>
-          <td style="color:var(--ink3);font-size:11px">${b.displayDate||b.stayDates||b.rawDate||''}</td>
-          <td><span class="chip ${(b.platform||b.channel||'')==='Offline'?'offline':''}">${b.platform||b.channel||''}</span></td>
-          <td class="r ${_bookingUSD(b)>0?'pos':''}">${_bookingUSD(b)>0 ? fmtUSD(_bookingUSD(b)) : '$0.00'}</td>
-          <td class="r ${_bookingGHS(b)>0?'pos':''}">${_bookingGHS(b)>0 ? fmtGHS(_bookingGHS(b)) : 'GHS 0.00'}</td>
-        </tr>`).join('')}
+      <tbody id="rev-tbody">
+        ${bookings.map((b, i) => {
+          const bu = _bookingUSD(b), bg = _bookingGHS(b);
+          return `<tr data-bi="${i}">
+            <td>${b.guest||'—'}</td>
+            <td style="color:var(--ink3);font-size:11px">${b.displayDate||b.stayDates||b.rawDate||''}</td>
+            <td style="color:var(--ink3);font-size:11px;text-align:center">${b.nights||''}</td>
+            <td><span class="chip ${(b.platform||'')==='Offline'?'offline':''}">${b.platform||''}</span></td>
+            <td class="r rev-usd-cell ${bu>0?'pos':''}" data-val="${bu}">${bu>0 ? fmtUSD(bu) : '<span style="color:var(--ink3)">—</span>'}</td>
+            <td class="r rev-ghs-cell ${bg>0?'pos':''}" data-val="${bg}">${bg>0 ? fmtGHS(bg) : '<span style="color:var(--ink3)">—</span>'}</td>
+          </tr>`;
+        }).join('')}
       </tbody>
       <tfoot><tr>
         <td colspan="4"><strong>TOTAL RENTAL INCOME</strong></td>
-        <td class="r pos"><strong>${fmtUSD(c.totalIncUSD)}</strong></td>
-        <td class="r pos"><strong>${fmtGHS(c.totalIncGHS)}</strong></td>
+        <td class="r pos" id="rev-total-usd"><strong>${fmtUSD(c.totalIncUSD)}</strong></td>
+        <td class="r pos" id="rev-total-ghs"><strong>${fmtGHS(c.totalIncGHS)}</strong></td>
       </tr></tfoot>
     </table>
 
