@@ -1479,103 +1479,132 @@ function _analyseProperty(p, c, period) {
   const expenses  = p.expenses  || [];
   const pid       = p.id || '';
   const propName  = p.name || 'This property';
-  const fxRate    = p.fxRate || 11;
+  const fxRate    = parseFloat(p.fxRate) || 11;
 
-  // ── 1. Revenue & payout ──────────────────────────────────────────
-  const totalRev   = c.totalIncUSD + (c.totalIncGHS / fxRate);
-  const payout     = c.ownerPayout;
-  const payoutSign = payout >= 0 ? 'positive' : 'negative';
+  if (bookings.length === 0) {
+    return `No bookings were recorded for ${propName} in ${period}. ${expenses.length > 0 ? `However, ${fmtGHS(c.expGHS)} in expenses across ${expenses.length} items were logged.` : ''}`.trim();
+  }
 
-  // ── 2. Platform mix ───────────────────────────────────────────────
-  const platCount  = {};
-  bookings.forEach(b => { const pl = b.platform || 'Other'; platCount[pl] = (platCount[pl]||0) + 1; });
-  const topPlat    = Object.entries(platCount).sort((a,b)=>b[1]-a[1]);
-  const airbnbPct  = Math.round(((platCount['Airbnb']||0) / Math.max(bookings.length,1)) * 100);
-  const offlinePct = Math.round(((platCount['Offline']||0) / Math.max(bookings.length,1)) * 100);
-
-  // ── 3. Currency mix ───────────────────────────────────────────────
-  const usdBookings = bookings.filter(b => _bookingUSD(b) > 0).length;
-  const ghsBookings = bookings.filter(b => _bookingGHS(b) > 0).length;
-
-  // ── 4. Average nightly rate ───────────────────────────────────────
+  // ── 1. Night counts split by currency stream ──────────────────────
+  const usdBks   = bookings.filter(b => _bookingUSD(b) > 0);
+  const ghsBks   = bookings.filter(b => _bookingGHS(b) > 0);
+  const usdNights = usdBks.reduce((s,b) => s + (parseInt(b.nights)||1), 0);
+  const ghsNights = ghsBks.reduce((s,b) => s + (parseInt(b.nights)||1), 0);
   const totalNights = bookings.reduce((s,b) => s + (parseInt(b.nights)||1), 0);
-  const adrUSD      = (usdBookings > 0 && c.totalIncUSD > 0)
-                      ? c.totalIncUSD / Math.max(totalNights, 1) : 0;
 
-  // ── 5. Prior-period comparison ────────────────────────────────────
-  const periodIdx   = PERIOD_LABELS.indexOf(period);
-  const prevLabel   = PERIOD_LABELS[periodIdx + 1];
-  const prevCode    = prevLabel ? periodToCode(prevLabel) : null;
-  const prevData    = prevCode ? PERIOD_DATA[prevCode] : null;
-  const prevProp    = prevData ? prevData.find(x => x.id === pid) : null;
-  const prevC       = prevProp ? computeProperty(_applyOverrides(prevProp, prevCode)) : null;
-  const prevPayout  = prevC ? prevC.ownerPayout : null;
-  let trendSentence = '';
-  if (prevPayout !== null && prevPayout !== 0) {
-    const delta  = payout - prevPayout;
-    const deltaPct = Math.abs(Math.round((delta / Math.abs(prevPayout)) * 100));
-    if (deltaPct >= 5) {
-      trendSentence = delta > 0
-        ? `This represents a ${deltaPct}% improvement over ${prevLabel} (${fmtUSD(prevPayout)}), driven by stronger booking activity.`
-        : `This is ${deltaPct}% below ${prevLabel} (${fmtUSD(prevPayout)}), reflecting higher operational costs or reduced occupancy.`;
+  // ── 2. Per-stream ADR (apples-to-apples) ─────────────────────────
+  const adrUSD = (usdBks.length > 0 && c.totalIncUSD > 0 && usdNights > 0)
+                  ? c.totalIncUSD / usdNights : 0;
+  const adrGHS = (ghsBks.length > 0 && c.totalIncGHS > 0 && ghsNights > 0)
+                  ? c.totalIncGHS / ghsNights : 0;
+
+  // ── 3. Combined revenue in USD-equivalent ─────────────────────────
+  const totalRevUSD = c.totalIncUSD + (c.totalIncGHS / fxRate);
+
+  // ── 4. Occupancy ──────────────────────────────────────────────────
+  const occ    = computeOccupancyMetrics(p, periodToCode(period));
+  const occPct = Math.round((occ.occupancyRate || 0) * 100);
+
+  // ── 5. Platform mix ───────────────────────────────────────────────
+  const platCount = {};
+  bookings.forEach(b => { const pl = b.platform || 'Other'; platCount[pl] = (platCount[pl]||0) + 1; });
+  const topPlat = Object.entries(platCount).sort((a,b) => b[1]-a[1]);
+
+  // ── 6. Expense ratio vs total combined revenue ────────────────────
+  //    Convert everything to GHS for a single ratio: expGHS / (totalRevUSD * fxRate)
+  const totalRevGHS  = totalRevUSD * fxRate;
+  const expRatioComb = totalRevGHS > 0 ? Math.round((c.expGHS / totalRevGHS) * 100) : 0;
+
+  // ── 7. Prior-period comparison (immediately preceding month) ──────
+  const periodIdx  = PERIOD_LABELS.indexOf(period);
+  const prevLabel  = periodIdx >= 0 ? PERIOD_LABELS[periodIdx + 1] : null;
+  const prevCode   = prevLabel ? periodToCode(prevLabel) : null;
+  const prevData   = prevCode ? PERIOD_DATA[prevCode] : null;
+  const prevProp   = prevData ? prevData.find(x => x.id === pid) : null;
+  const prevC      = prevProp ? computeProperty(_applyOverrides(prevProp, prevCode)) : null;
+  const prevRev    = prevC ? (prevC.totalIncUSD + (prevC.totalIncGHS / fxRate)) : null;
+
+  // ── 8. Build narrative paragraphs ─────────────────────────────────
+
+  // Sentence A — Occupancy + booking volume
+  let sentA = '';
+  const occDesc = occPct >= 75 ? 'strong' : occPct >= 45 ? 'moderate' : 'below-target';
+  sentA = `${propName} achieved ${occDesc} occupancy of ${occPct}% in ${period}, with ${bookings.length} booking${bookings.length !== 1 ? 's' : ''} totalling ${totalNights} night${totalNights !== 1 ? 's' : ''}.`;
+
+  // Sentence B — Revenue: streams + ADR + combined total
+  let sentB = '';
+  const revParts = [];
+  if (usdBks.length > 0)
+    revParts.push(`${fmtUSD(c.totalIncUSD)} from ${usdBks.length} international booking${usdBks.length !== 1 ? 's' : ''}${adrUSD > 0 ? ` (avg. ${fmtUSD(adrUSD)}/night)` : ''}`);
+  if (ghsBks.length > 0)
+    revParts.push(`${fmtGHS(c.totalIncGHS)} from ${ghsBks.length} local booking${ghsBks.length !== 1 ? 's' : ''}${adrGHS > 0 ? ` (avg. ${fmtGHS(Math.round(adrGHS))}/night)` : ''}`);
+  if (revParts.length > 0) {
+    sentB = `Revenue comprised ${revParts.join(' and ')}, totalling ${fmtUSD(totalRevUSD)} on a combined USD-equivalent basis at ${fxRate} GHS/USD.`;
+  }
+
+  // Sentence C — Channel mix
+  let sentC = '';
+  if (topPlat.length >= 2) {
+    const [first, second] = topPlat;
+    const fPct = Math.round(first[1] / bookings.length * 100);
+    sentC = `${first[0]} was the leading channel at ${fPct}% of bookings (${first[1]}), with ${second[0]} contributing ${second[1]}.`;
+  } else if (topPlat.length === 1) {
+    sentC = `All bookings originated through ${topPlat[0][0]}.`;
+  }
+
+  // Sentence D — Expenses with correct ratio vs combined revenue
+  let sentD = '';
+  if (expenses.length === 0) {
+    sentD = 'No operational expenses were recorded for this period.';
+  } else {
+    // Also explain GHS net position clearly if there's a cross-currency effect
+    const netGHS    = c.totalIncGHS - c.expGHS;
+    const netGHSusd = netGHS / fxRate;
+    if (ghsBks.length > 0 && c.expGHS > 0) {
+      // There are both GHS bookings and GHS expenses — explain the interplay
+      const ghsNetDesc = netGHS >= 0
+        ? `leaving a net GHS surplus of ${fmtGHS(netGHS)} (${fmtUSD(netGHSusd)} equivalent)`
+        : `leaving a net GHS shortfall of ${fmtGHS(Math.abs(netGHS))} (${fmtUSD(Math.abs(netGHSusd))} deducted from USD income)`;
+      if (expRatioComb > 55) {
+        sentD = `Operational expenses of ${fmtGHS(c.expGHS)} across ${expenses.length} items represent ${expRatioComb}% of combined revenue — GHS bookings generated ${fmtGHS(c.totalIncGHS)} against ${fmtGHS(c.expGHS)} in GHS costs, ${ghsNetDesc}. A review of recurring cost items is recommended.`;
+      } else {
+        sentD = `Expenses of ${fmtGHS(c.expGHS)} across ${expenses.length} items amounted to ${expRatioComb}% of combined revenue — GHS bookings generated ${fmtGHS(c.totalIncGHS)} against ${fmtGHS(c.expGHS)} in GHS costs, ${ghsNetDesc}.`;
+      }
     } else {
-      trendSentence = `Performance remained consistent with ${prevLabel} (${fmtUSD(prevPayout)}), indicating stable occupancy and rates.`;
+      // USD-only bookings; expenses are purely GHS overhead
+      if (expRatioComb > 55) {
+        sentD = `Operational expenses totalled ${fmtGHS(c.expGHS)} across ${expenses.length} items (${expRatioComb}% of combined revenue) — a cost review is recommended to improve net margins.`;
+      } else {
+        sentD = `Expenses of ${fmtGHS(c.expGHS)} across ${expenses.length} items were well-managed at ${expRatioComb}% of combined revenue.`;
+      }
     }
   }
 
-  // ── 6. Expense commentary ─────────────────────────────────────────
-  const expRatioGHS = c.totalIncGHS > 0
-    ? Math.round((c.expGHS / c.totalIncGHS) * 100) : 0;
-  let expSentence = '';
-  if (expenses.length === 0) {
-    expSentence = 'No expenses were recorded for this period.';
-  } else if (expRatioGHS > 60) {
-    expSentence = `Expenses of ${fmtGHS(c.expGHS)} across ${expenses.length} items represent a high cost ratio (${expRatioGHS}% of GHS revenue) — a review of recurring costs is recommended.`;
-  } else if (expRatioGHS > 30) {
-    expSentence = `Expenses totalled ${fmtGHS(c.expGHS)} across ${expenses.length} items (${expRatioGHS}% of GHS revenue), within normal operating range.`;
+  // Sentence E — Month-on-month comparison (revenue-based, not just payout)
+  let sentE = '';
+  if (prevRev !== null && prevRev > 0 && totalRevUSD > 0) {
+    const revDelta  = totalRevUSD - prevRev;
+    const revDeltaPct = Math.abs(Math.round((revDelta / prevRev) * 100));
+    if (revDeltaPct >= 5) {
+      sentE = revDelta > 0
+        ? `Combined revenue is up ${revDeltaPct}% versus ${prevLabel} (${fmtUSD(prevRev)}), reflecting improved booking volume or higher rates.`
+        : `Combined revenue is ${revDeltaPct}% lower than ${prevLabel} (${fmtUSD(prevRev)}), suggesting softer demand or fewer bookings this month.`;
+    } else {
+      sentE = `Revenue performance was broadly in line with ${prevLabel} (${fmtUSD(prevRev)}).`;
+    }
+  }
+
+  // Sentence F — Net payout headline
+  const payout = c.ownerPayout;
+  let sentF = '';
+  if (payout >= 0) {
+    sentF = `Your net owner payout for ${period} is ${fmtUSD(payout)} after TWG management fees of ${fmtUSD(c.cogsUSD)}.`;
   } else {
-    expSentence = `Operating expenses were well-controlled at ${fmtGHS(c.expGHS)} across ${expenses.length} items.`;
+    sentF = `The net owner position for ${period} is ${fmtUSD(payout)} — USD income of ${fmtUSD(c.totalIncUSD)} was offset by a negative GHS position of ${fmtGHS(Math.abs(c.totalIncGHS - c.expGHS))} after expenses, resulting in a carry-over balance.`;
   }
 
-  // ── 7. Occupancy & booking commentary ────────────────────────────
-  const occ = computeOccupancyMetrics(p, periodToCode(period));
-  const occPct = Math.round((occ.occupancyRate || 0) * 100);
-  let occSentence = '';
-  if (bookings.length === 0) {
-    occSentence = `No bookings were recorded for ${period}.`;
-  } else if (occPct >= 75) {
-    occSentence = `${propName} achieved strong occupancy of ${occPct}% with ${bookings.length} bookings totalling ${totalNights} nights${adrUSD > 0 ? ` at an average nightly rate of ${fmtUSD(adrUSD)}` : ''}.`;
-  } else if (occPct >= 45) {
-    occSentence = `${propName} recorded ${bookings.length} bookings (${totalNights} nights, ${occPct}% occupancy)${adrUSD > 0 ? ` at ${fmtUSD(adrUSD)} per night` : ''}.`;
-  } else {
-    occSentence = `Occupancy was below target at ${occPct}% (${bookings.length} bookings, ${totalNights} nights) — there is opportunity to increase rates or marketing on lower-demand dates.`;
-  }
-
-  // ── 8. Platform insight ───────────────────────────────────────────
-  let platSentence = '';
-  if (topPlat.length > 1) {
-    const [first, second] = topPlat;
-    platSentence = `Booking channels: ${first[0]} led with ${first[1]} stays (${Math.round(first[1]/bookings.length*100)}%), followed by ${second[0]} with ${second[1]}.`;
-  } else if (topPlat.length === 1) {
-    platSentence = `All bookings came through ${topPlat[0][0]}.`;
-  }
-
-  // ── 9. FX note ───────────────────────────────────────────────────
-  let fxSentence = '';
-  if (ghsBookings > 0 && c.netGHS !== 0) {
-    fxSentence = c.ghsConvUSD >= 0
-      ? `GHS income contributed ${fmtUSD(c.ghsConvUSD)} after conversion at ${fxRate} GHS/USD.`
-      : `The GHS expense balance resulted in a ${fmtUSD(Math.abs(c.ghsConvUSD))} USD offset after FX conversion.`;
-  }
-
-  // ── 10. Payout headline ───────────────────────────────────────────
-  const payoutLine = payout >= 0
-    ? `Your net owner payout for ${period} is ${fmtUSD(payout)}.`
-    : `The net position for ${period} shows a deficit of ${fmtUSD(Math.abs(payout))} — primarily attributable to expenses exceeding rental income in local currency.`;
-
-  // ── Assemble narrative ────────────────────────────────────────────
-  const parts = [occSentence, platSentence, fxSentence, expSentence, trendSentence, payoutLine]
-    .filter(Boolean);
+  // ── Assemble: group into coherent paragraphs ──────────────────────
+  const parts = [sentA, sentB, sentC, sentD, sentE, sentF].filter(Boolean);
   return parts.join(' ');
 }
 
