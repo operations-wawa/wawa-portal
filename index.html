@@ -1118,7 +1118,7 @@ function renderAdminTable() {
       ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
       : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
     const occPct   = occ.occupancy.toFixed(0);
-    const occClass = occ.occupancy >= 70 ? 'occ-high' : occ.occupancy >= 40 ? 'occ-mid' : 'occ-low';
+    const occClass = occ.occupancy >= 80 ? 'occ-high' : occ.occupancy >= 50 ? 'occ-mid' : 'occ-low';
     const payBar   = Math.round((c.ownerPayout / maxPayout) * 100);
     const incBar   = Math.round((c.totalIncUSD / maxIncome) * 100);
     const bookings = (p.bookings || []).length;
@@ -1528,7 +1528,8 @@ function _analyseProperty(p, c, period) {
 
   // Sentence A — Occupancy + booking volume
   let sentA = '';
-  const occDesc = occPct >= 75 ? 'strong' : occPct >= 45 ? 'moderate' : 'below-target';
+  // TWG target: 80% occupancy
+  const occDesc = occPct >= 80 ? 'strong' : occPct >= 50 ? 'moderate' : 'below-target';
   sentA = `${propName} achieved ${occDesc} occupancy of ${occPct}% in ${period}, with ${bookings.length} booking${bookings.length !== 1 ? 's' : ''} totalling ${totalNights} night${totalNights !== 1 ? 's' : ''}.`;
 
   // Sentence B — Revenue: streams + ADR + combined total
@@ -2128,7 +2129,7 @@ function renderFilteredTable() {
         ? `<span class="badge b-sent"><span class="b-dot"></span>Sent</span>`
         : `<span class="badge b-pending"><span class="b-dot"></span>Pending</span>`;
       const occPct   = occ.occupancy.toFixed(0);
-      const occClass = occ.occupancy >= 70 ? 'occ-high' : occ.occupancy >= 40 ? 'occ-mid' : 'occ-low';
+      const occClass = occ.occupancy >= 80 ? 'occ-high' : occ.occupancy >= 50 ? 'occ-mid' : 'occ-low';
       const payBar   = Math.round((c.ownerPayout / maxPayout) * 100);
       const incBar   = Math.round((c.totalIncUSD / maxIncome) * 100);
       const bookings = (p.bookings || []).length;
@@ -2448,7 +2449,7 @@ function renderAnalytics() {
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
           ${props.map(p => {
             const occ = computeOccupancyMetrics(p, pCode);
-            const cls = occ.occupancy>=70?'var(--green)':occ.occupancy>=40?'var(--gold)':'var(--red)';
+            const cls = occ.occupancy>=80?'var(--green)':occ.occupancy>=50?'var(--gold)':'var(--red)';
             return `<div style="display:flex;align-items:center;gap:8px">
               <div style="width:110px;font-size:10px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(p.name||p.id).replace(/^The /,'')}</div>
               <div style="flex:1;height:6px;background:var(--paper2);border-radius:3px">
@@ -2834,7 +2835,7 @@ function _buildPropertyBlock(p, pCode) {
   (p.bookings||[]).forEach(b => { const ch=b.platform||b.channel||'Unknown'; chUSDMap[ch]=(chUSDMap[ch]||0)+_bookingUSD(b); });
   const topCh  = Object.entries(chUSDMap).sort((a,b)=>b[1]-a[1])[0];
   const hasExp = (p.expenses||[]).length > 0;
-  const occCls = occ.occupancy>=70?'occ-high':occ.occupancy>=40?'occ-mid':'occ-low';
+  const occCls = occ.occupancy>=80?'occ-high':occ.occupancy>=50?'occ-mid':'occ-low';
 
   return `
     <div class="prop-chart-section">
@@ -2846,7 +2847,7 @@ function _buildPropertyBlock(p, pCode) {
         <!-- ① Metrics -->
         <div class="metrics-col">
           <div class="metric-item"><div class="metric-lbl">Total Revenue</div><div class="metric-val">${fmtUSD(c.totalIncUSD)}</div><div class="metric-sub">${fmtGHS(c.totalIncGHS)}</div></div>
-          <div class="metric-item"><div class="metric-lbl">Occupancy</div><div class="metric-val" style="color:${occ.occupancy>=70?'var(--green)':occ.occupancy>=40?'var(--gold)':'var(--red)'}">${occ.occupancy.toFixed(1)}%</div><div class="metric-sub">${occ.totalNights} of ${occ.availNights} nights booked</div></div>
+          <div class="metric-item"><div class="metric-lbl">Occupancy</div><div class="metric-val" style="color:${occ.occupancy>=80?'var(--green)':occ.occupancy>=50?'var(--gold)':'var(--red)'}">${occ.occupancy.toFixed(1)}%</div><div class="metric-sub">${occ.totalNights} of ${occ.availNights} nights booked</div></div>
           <div class="metric-item"><div class="metric-lbl">ADR</div><div class="metric-val">${fmtUSD(occ.adr)}</div><div class="metric-sub">${fmtGHS(occ.adrGHS)} per night</div></div>
           <div class="metric-item"><div class="metric-lbl">RevPAN</div><div class="metric-val">${fmtUSD(occ.revpan)}</div><div class="metric-sub">Revenue / available night</div></div>
           <div class="metric-item"><div class="metric-lbl">Top Channel</div><div class="metric-val" style="font-size:12px">${topCh?topCh[0]:'—'}</div><div class="metric-sub">${topCh?fmtUSD(topCh[1])+' revenue':''}</div></div>
