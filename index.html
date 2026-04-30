@@ -582,6 +582,19 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
       <button class="modal-close" onclick="closeSettings()">×</button>
     </div>
     <div class="settings-section">
+      <div class="settings-section-title">✦ AI Commentary (Anthropic)</div>
+      <div class="settings-grid">
+        <div class="field" style="grid-column:1/-1">
+          <label>Anthropic API Key</label>
+          <div style="position:relative">
+            <input type="password" id="anthropic-key-input" placeholder="sk-ant-api03-…" style="padding-right:80px"/>
+            <button onclick="(function(){var i=document.getElementById('anthropic-key-input');i.type=i.type==='password'?'text':'password'})()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:1px solid var(--br2);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--tx3);cursor:pointer">Show</button>
+          </div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:5px">Stored in your browser only — never sent to any server. Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--gd)">console.anthropic.com</a></div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
       <div class="settings-section-title">Email (SendGrid)</div>
       <div class="settings-grid">
         <div class="field"><label>SendGrid API Key</label><input type="password" id="sg-key-input" placeholder="SG.xxxxxxxx"/></div>
@@ -624,7 +637,11 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxE5IJVyO6AINKStv8VgE-FCHbBXEj49OF8ZGHbZ9UprR6qoqYR_4CmDyhjaqqCJpb7/exec';
 
 // ── ANTHROPIC API KEY ─────────────────────────────────────────────
-const ANTHROPIC_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your key
+// Key is entered by the admin in Settings and stored only in localStorage.
+// Never hardcoded here — this file is public (GitHub Pages).
+function _getAnthropicKey() {
+  return localStorage.getItem('wawa_anthropic_key') || '';
+}
 
 // ── EMAIL / WA / HOSTAWAY CONSTANTS ──────────────────────────────
 let SENDGRID_API_KEY  = ''; // Set in Settings
@@ -1459,9 +1476,9 @@ async function fetchAI(p, c, period) {
   // Insert AI strip after modal body is rendered
   const body = document.getElementById('modal-body');
   const strip = document.createElement('div');
-  // Check for placeholder API key
-  const _keyMissing = !ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'YOUR_API_KEY_HERE';
-  strip.innerHTML = `<div class="ai-strip"><div class="ai-strip-lbl">✦ AI Commentary</div><div class="ai-strip-text ${_keyMissing ? '' : 'loading'}" id="ai-txt">${_keyMissing ? 'AI commentary unavailable — Anthropic API key not configured in source.' : 'Generating analysis…'}</div></div>
+  const _apiKey = _getAnthropicKey();
+  const _keyMissing = !_apiKey;
+  strip.innerHTML = `<div class="ai-strip"><div class="ai-strip-lbl">✦ AI Commentary</div><div class="ai-strip-text ${_keyMissing ? '' : 'loading'}" id="ai-txt">${_keyMissing ? '⚙ AI commentary not configured — click <strong>Settings</strong> in the top bar and enter your Anthropic API key.' : 'Generating analysis…'}</div></div>
   <div class="modal-actions">
     <button class="btn-act btn-dark" onclick="downloadPDF()">⬇ Download PDF</button>
     <button class="btn-act btn-gold" onclick="markSent()">✓ Mark as sent</button>
@@ -1481,7 +1498,7 @@ async function fetchAI(p, c, period) {
   const prompt = `You are a property manager at Wawa Group in Ghana. Write a 2-sentence professional owner statement commentary (plain text, no bullets, no markdown) for: Property: ${p.name}, Month: ${period}, Bookings: ${_bookings.length}, Total income: USD ${c.totalIncUSD.toFixed(2)} + GHS ${c.totalIncGHS.toFixed(2)}, TWG fees: USD ${c.cogsUSD.toFixed(2)}, Expenses: GHS ${c.expGHS.toFixed(2)}, Net owner payout: USD ${c.ownerPayout.toFixed(2)}. Be warm, professional, and highlight performance.`;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json','x-api-key': ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key': _apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{role:'user',content:prompt}] })
     });
     const data = await res.json();
@@ -2610,6 +2627,7 @@ function openSettings() {
     ).join('');
   }
   // Restore saved values
+  const ank = document.getElementById('anthropic-key-input'); if (ank) ank.value = _getAnthropicKey();
   const sgk = document.getElementById('sg-key-input');   if (sgk) sgk.value = SENDGRID_API_KEY;
   const sgf = document.getElementById('sg-from-input');  if (sgf) sgf.value = SG_FROM_EMAIL;
   const wap = document.getElementById('wa-phone-input'); if (wap) wap.value = WA_PHONE_NUMBER_ID;
@@ -2626,6 +2644,11 @@ function bgCloseSettings(e) {
 }
 
 function saveSettings() {
+  // Anthropic key — stored separately under its own key so it survives settings resets
+  const ank = document.getElementById('anthropic-key-input');
+  if (ank && ank.value.trim()) {
+    localStorage.setItem('wawa_anthropic_key', ank.value.trim());
+  }
   const sgk = document.getElementById('sg-key-input');   if (sgk) SENDGRID_API_KEY = sgk.value.trim();
   const sgf = document.getElementById('sg-from-input');  if (sgf) SG_FROM_EMAIL    = sgf.value.trim();
   const wap = document.getElementById('wa-phone-input'); if (wap) WA_PHONE_NUMBER_ID = wap.value.trim();
@@ -2638,7 +2661,7 @@ function saveSettings() {
     localStorage.setItem('wawa_settings', JSON.stringify({ SENDGRID_API_KEY, SG_FROM_EMAIL, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN, OWNER_EMAILS, OWNER_WA }));
     auditLog('SETTINGS_SAVED', 'API keys and contacts updated');
     closeSettings();
-    notify('✓ Settings saved');
+    notify('✓ Settings saved' + (_getAnthropicKey() ? ' — AI commentary enabled ✦' : ''));
   } catch(e) {
     notify('⚠ Settings could not be saved — storage may be full');
     auditLog('SETTINGS_SAVE_FAILED', e.message);
