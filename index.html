@@ -464,29 +464,18 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
 
     <!-- Control Bar -->
     <div class="ctrl-bar">
-      <!-- Hidden period-sel kept for backwards compat with renderAnalytics, openStatement, etc. -->
-      <select id="period-sel" style="display:none">
-        <option>March 2026</option>
-        <option>February 2026</option>
-        <option selected>January 2026</option>
-        <option>December 2025</option>
-        <option>November 2025</option>
-      </select>
+      <!-- Hidden period-sel — populated dynamically by initPeriods() on load -->
+      <select id="period-sel" style="display:none"></select>
 
-      <!-- Period filter dropdown -->
+      <!-- Period filter dropdown — items injected by initPeriods() -->
       <div class="filter-popup-wrap" id="fp-wrap-period">
         <button class="filter-btn" id="fp-btn-period" onclick="toggleFilterDropdown('period')">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <span id="fp-label-period">Jan '26</span>
+          <span id="fp-label-period">Loading…</span>
           <span class="btn-badge" id="fp-badge-period" style="display:none">1</span>
         </button>
         <div class="filter-popup" id="fp-popup-period" style="display:none">
-          <div class="filter-popup-header">Select Period(s)</div>
-          <div class="filter-popup-item" onclick="togglePeriodFilter('March 2026')"><input type="checkbox" data-period="March 2026" onclick="event.stopPropagation()" onchange="togglePeriodFilter('March 2026')"> March 2026</div>
-          <div class="filter-popup-item" onclick="togglePeriodFilter('February 2026')"><input type="checkbox" data-period="February 2026" onclick="event.stopPropagation()" onchange="togglePeriodFilter('February 2026')"> February 2026</div>
-          <div class="filter-popup-item checked" onclick="togglePeriodFilter('January 2026')"><input type="checkbox" data-period="January 2026" checked onclick="event.stopPropagation()" onchange="togglePeriodFilter('January 2026')"> January 2026</div>
-          <div class="filter-popup-item" onclick="togglePeriodFilter('December 2025')"><input type="checkbox" data-period="December 2025" onclick="event.stopPropagation()" onchange="togglePeriodFilter('December 2025')"> December 2025</div>
-          <div class="filter-popup-item" onclick="togglePeriodFilter('November 2025')"><input type="checkbox" data-period="November 2025" onclick="event.stopPropagation()" onchange="togglePeriodFilter('November 2025')"> November 2025</div>
+          <!-- dynamically built by initPeriods() -->
         </div>
       </div>
 
@@ -566,7 +555,7 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
         <div class="log-entry">
           <div class="log-dot ok"></div>
           <div class="log-t">09:02</div>
-          <div class="log-m">December 2025 statements delivered to all owners.</div>
+          <div class="log-m">Portal initialised — loading current period data.</div>
         </div>
       </div>
     </div>
@@ -666,8 +655,57 @@ function auditLog(action, detail) {
 }
 
 // ── MULTI-PERIOD DATA STORE ───────────────────────────────────────
-const PERIOD_DATA   = {};  // { '2026-01': [props…], … }
-const PERIOD_LABELS = ['March 2026','February 2026','January 2026','December 2025','November 2025'];
+const PERIOD_DATA = {};  // { '2026-01': [props…], … }
+
+// Dynamically generate the last N month labels from today — never needs manual updates.
+// Always produces labels like "April 2026", "March 2026", … newest-first.
+const _MO = ['January','February','March','April','May','June',
+              'July','August','September','October','November','December'];
+function _buildPeriodLabels(n = 14) {
+  const now = new Date();
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push(_MO[d.getMonth()] + ' ' + d.getFullYear());
+  }
+  return out;
+}
+const PERIOD_LABELS  = _buildPeriodLabels(14);   // rolling 14-month window
+const DEFAULT_PERIOD = PERIOD_LABELS[0];          // current month, e.g. "April 2026"
+
+// ── Bootstrap period UI ── called once after DOM is ready ────────
+function initPeriods() {
+  // 1. Build hidden period-sel options
+  const sel = document.getElementById('period-sel');
+  if (sel) {
+    sel.innerHTML = PERIOD_LABELS.map((l, i) =>
+      `<option${i === 0 ? ' selected' : ''}>${l}</option>`
+    ).join('');
+  }
+  // 2. Build filter popup items
+  const popup = document.getElementById('fp-popup-period');
+  if (popup) {
+    popup.innerHTML =
+      `<div class="filter-popup-header">Select Period</div>` +
+      PERIOD_LABELS.map((l, i) => {
+        const mo = l.split(' ')[0].slice(0, 3);
+        const yr = l.slice(-2);
+        return `<div class="filter-popup-item${i === 0 ? ' checked' : ''}" onclick="togglePeriodFilter('${l}')">
+          <input type="checkbox" data-period="${l}"${i === 0 ? ' checked' : ''}
+            onclick="event.stopPropagation()" onchange="togglePeriodFilter('${l}')">
+          ${l}
+        </div>`;
+      }).join('');
+  }
+  // 3. Seed the filter set to current month and update the label button
+  filterPeriods = new Set([DEFAULT_PERIOD]);
+  const lbl = document.getElementById('fp-label-period');
+  if (lbl) {
+    const mo = DEFAULT_PERIOD.split(' ')[0].slice(0, 3);
+    const yr = DEFAULT_PERIOD.slice(-2);
+    lbl.textContent = `${mo} '${yr}`;
+  }
+}
 
 async function loadAllPeriods() {
   addLog('Loading all periods for trend analysis…', 'info');
@@ -759,7 +797,7 @@ async function loadLiveData(period) {
     // Store in multi-period cache
     PERIOD_DATA[period] = json.data;
     // Sync filterPeriods to the loaded period
-    const _loadedLabel = PERIOD_LABELS.find(l => periodToCode(l) === period) || 'January 2026';
+    const _loadedLabel = PERIOD_LABELS.find(l => periodToCode(l) === period) || DEFAULT_PERIOD;
     filterPeriods = new Set([_loadedLabel]);
     const _sel = document.getElementById('period-sel');
     if (_sel) _sel.value = _loadedLabel;
@@ -1017,8 +1055,9 @@ function login() {
   document.getElementById('topbar-name').textContent = 'Admin';
   document.getElementById('admin-sub-nav').style.display = 'flex';
   document.getElementById('admin-view').style.display = 'block';
+  initPeriods();           // build period dropdown + filter items from PERIOD_LABELS
   renderAdminTable();
-  const period = periodToCode(document.getElementById('period-sel').value || 'January 2026');
+  const period = periodToCode(DEFAULT_PERIOD);
   loadLiveData(period).then(() => loadAllPeriods());
 }
 
@@ -1035,7 +1074,7 @@ function logout() {
   Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
   Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
   Object.keys(statuses).forEach(k => delete statuses[k]);
-  filterPeriods = new Set(['January 2026']);
+  filterPeriods = new Set([DEFAULT_PERIOD]);
   filterProps.clear();
   activeProp = null;
   currentProp = null;
@@ -1050,7 +1089,7 @@ function renderAdminTable() {
     tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--ink3)">Loading live data from Google Sheets…</td></tr>';
     return;
   }
-  const periodCode = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
+  const periodCode = periodToCode(document.getElementById('period-sel')?.value || DEFAULT_PERIOD);
   const maxPayout  = Math.max(...props.map(p => computeProperty(p).ownerPayout), 1);
   const maxIncome  = Math.max(...props.map(p => computeProperty(p).totalIncUSD), 1);
 
@@ -1122,8 +1161,8 @@ async function runStatements() {
   renderFilteredTable();
   const propCount = _targetKeys.filter(k => PROPERTIES[k]).length;
   // ── Statement Versioning ──
-  const periodCode = periodToCode(document.getElementById('period-sel').value || 'January 2026');
-  const periodLabel = document.getElementById('period-sel').value || 'January 2026';
+  const periodCode = periodToCode(document.getElementById('period-sel').value || DEFAULT_PERIOD);
+  const periodLabel = document.getElementById('period-sel').value || DEFAULT_PERIOD;
   _targetKeys.filter(k => PROPERTIES[k]).forEach(k => {
     const key = k + '_' + periodCode;
     STATEMENT_VERSIONS[key] = {
@@ -1167,7 +1206,7 @@ let activeProp = null;
 async function openStatement(pid, preloaded) {
   // Always fetch detailed data (?action=owner) so individual booking rows are present.
   // ?action=all returns aggregate-only data; booking lines would be blank without this.
-  const _period = periodToCode(document.getElementById('period-sel')?.value || 'January 2026');
+  const _period = periodToCode(document.getElementById('period-sel')?.value || DEFAULT_PERIOD);
   try {
     const res  = await fetch(APPS_SCRIPT_URL + `?action=owner&id=${pid}&period=${_period}`);
     const json = await res.json();
@@ -1187,7 +1226,7 @@ async function openStatement(pid, preloaded) {
     else if (PROPERTIES[pid]) { activeProp = PROPERTIES[pid]; }
     else { notify('Error: ' + e.message); return; }
   }
-  const _activePeriod = document.getElementById('period-sel')?.value || 'January 2026';
+  const _activePeriod = document.getElementById('period-sel')?.value || DEFAULT_PERIOD;
   const _periodCode   = periodToCode(_activePeriod);
   // Apply any locally-stored revenue overrides before computing
   const _prop = _applyOverrides(activeProp, _periodCode);
@@ -1292,7 +1331,7 @@ function recomputeRevTotals() {
 }
 
 function buildStatement(p, c, _activePeriod, _hasRevenue) {
-  _activePeriod = _activePeriod || 'January 2026';
+  _activePeriod = _activePeriod || DEFAULT_PERIOD;
   // Null-guards — never crash if data is missing
   const bookings = p.bookings || [];
   const expenses = p.expenses || [];
@@ -1464,7 +1503,7 @@ function downloadPDF() {
   const c = computeProperty(p);
   notify('📄 Opening print view…');
   const w = window.open('', '_blank');
-  const _pdfPeriod = document.getElementById('period-sel')?.value || 'January 2026';
+  const _pdfPeriod = document.getElementById('period-sel')?.value || DEFAULT_PERIOD;
   auditLog('PDF_DOWNLOADED', p.name + ' · ' + _pdfPeriod);
   const _vKey = p.id + '_' + periodToCode(_pdfPeriod);
   const _vInfo = STATEMENT_VERSIONS[_vKey];
@@ -1711,7 +1750,7 @@ async function sendVia(ch) {
 }
 
 // ── DYNAMIC FILTER STATE ────────────────────────────────────────────
-let filterPeriods = new Set(['January 2026']);
+let filterPeriods = new Set([DEFAULT_PERIOD]);
 let filterProps   = new Set(); // empty = all properties
 
 const PROP_NAMES = {
@@ -1764,7 +1803,7 @@ function togglePeriodFilter(label) {
   }
   // If they clicked the already-selected period, do nothing (keep it selected)
   // Sync hidden period-sel to the selected period
-  const primary = PERIOD_LABELS.find(l => filterPeriods.has(l)) || 'January 2026';
+  const primary = PERIOD_LABELS.find(l => filterPeriods.has(l)) || DEFAULT_PERIOD;
   const sel = document.getElementById('period-sel');
   if (sel) sel.value = primary;
   // Load data for selected period(s) then re-render
@@ -1798,10 +1837,19 @@ function clearPropFilter() {
 }
 
 function _clearAllFilters() {
-  filterPeriods = new Set(['January 2026']);
+  filterPeriods = new Set([DEFAULT_PERIOD]);
   filterProps.clear();
   const sel = document.getElementById('period-sel');
-  if (sel) sel.value = 'January 2026';
+  if (sel) sel.value = DEFAULT_PERIOD;
+  // Re-sync checkbox states in the period popup
+  document.querySelectorAll('[data-period]').forEach(cb => {
+    const checked = cb.dataset.period === DEFAULT_PERIOD;
+    cb.checked = checked;
+    cb.closest?.('.filter-popup-item')?.classList.toggle('checked', checked);
+  });
+  // Re-sync button label
+  const lbl = document.getElementById('fp-label-period');
+  if (lbl) { const mo = DEFAULT_PERIOD.split(' ')[0].slice(0,3); const yr = DEFAULT_PERIOD.slice(-2); lbl.textContent = `${mo} '${yr}`; }
   renderFilteredTable();
   renderFilterPills();
   if (document.getElementById('analytics-view').style.display !== 'none') renderAnalytics();
@@ -1961,7 +2009,7 @@ function renderFilteredTable() {
   if (pt) pt.textContent = 'Portfolio — ' + periodStr + propStr;
 
   // Refresh dashboard stats from primary period data
-  const primaryCode = periodToCode(sortedPeriods[0] || 'January 2026');
+  const primaryCode = periodToCode(sortedPeriods[0] || DEFAULT_PERIOD);
   const primaryData = PERIOD_DATA[primaryCode] || Object.values(PROPERTIES).filter(p => p && p.id);
   if (primaryData.length > 0) updateDashboardStats(primaryData, primaryCode);
 }
@@ -2089,7 +2137,7 @@ function _mkHBar(id, labels, datasets) {
 function renderAnalytics() {
   // ── Respect the shared filter state ──
   // Primary period = most recent selected period
-  const primaryPeriod = PERIOD_LABELS.find(l => filterPeriods.has(l)) || 'January 2026';
+  const primaryPeriod = PERIOD_LABELS.find(l => filterPeriods.has(l)) || DEFAULT_PERIOD;
   const pCode         = periodToCode(primaryPeriod);
 
   // Collect props for each selected period (merge by id, primary period wins)
