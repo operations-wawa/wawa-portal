@@ -425,6 +425,7 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
   <div class="admin-sub-nav" id="admin-sub-nav">
     <button class="view-tab on" id="tab-statements" onclick="showAdminTab('statements')">Statements</button>
     <button class="view-tab" id="tab-analytics" onclick="showAdminTab('analytics')">Analytics</button>
+    <button class="view-tab" id="tab-twg" onclick="showAdminTab('twg')">TWG Earnings</button>
   </div>
 
   <!-- ADMIN -->
@@ -573,6 +574,66 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
     <div class="page-desc">Visual breakdown of bookings, channels, and expenses per property for the selected period.</div>
     <div id="analytics-container">
       <div style="padding:40px;text-align:center;color:var(--ink3)">Loading data — switch to Statements tab first to load a period, then return here.</div>
+    </div>
+  </div>
+
+  <!-- TWG EARNINGS VIEW -->
+  <div id="twg-view" style="display:none;padding:36px 40px;max-width:1200px;margin:0 auto;">
+    <div class="page-title">TWG <span style="color:var(--gold)">Earnings</span></div>
+    <div class="page-desc">Management fee income earned by Wawa Group across all properties for the selected period.</div>
+
+    <!-- KPI strip -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:28px 0 32px;">
+      <div class="stat-card">
+        <div class="kv" id="twg-total-usd">—</div>
+        <div class="kl">Total TWG Income (USD)</div>
+        <div class="ks" id="twg-total-usd-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="kv" id="twg-total-ghs">—</div>
+        <div class="kl">Total TWG Income (GHS)</div>
+        <div class="ks" id="twg-total-ghs-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="kv" id="twg-portfolio-rev">—</div>
+        <div class="kl">Portfolio Revenue (USD)</div>
+        <div class="ks" id="twg-portfolio-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="kv" id="twg-combined-usd">—</div>
+        <div class="kl">Combined TWG (USD equiv)</div>
+        <div class="ks" id="twg-combined-sub">USD + GHS converted</div>
+      </div>
+    </div>
+
+    <!-- Per-property breakdown table -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">Property Breakdown</div>
+        <div style="font-size:11px;color:var(--ink3)" id="twg-period-label"></div>
+      </div>
+      <table class="admin-table" style="width:100%">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Bookings</th>
+            <th>USD Revenue</th>
+            <th>GHS Revenue</th>
+            <th>TWG %</th>
+            <th>TWG Fee (USD)</th>
+            <th>TWG Fee (GHS)</th>
+            <th>TWG Equiv (USD)</th>
+          </tr>
+        </thead>
+        <tbody id="twg-tbody"></tbody>
+        <tfoot id="twg-tfoot"></tfoot>
+      </table>
+    </div>
+
+    <!-- Monthly trend -->
+    <div style="margin-top:32px;background:var(--nv);border:1px solid var(--br);border-radius:12px;padding:24px;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:18px">TWG Earnings Trend — Last 6 Months</div>
+      <canvas id="twg-trend-chart" style="max-height:220px"></canvas>
     </div>
   </div>
 
@@ -1162,9 +1223,11 @@ function logout() {
   document.getElementById('admin-view').style.display = 'none';
   document.getElementById('admin-sub-nav').style.display = 'none';
   document.getElementById('analytics-view').style.display = 'none';
+  document.getElementById('twg-view').style.display = 'none';
   // reset tab state
   document.getElementById('tab-statements').classList.add('on');
   document.getElementById('tab-analytics').classList.remove('on');
+  document.getElementById('tab-twg').classList.remove('on');
   // reset all global data state so re-login starts fresh
   Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
   Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
@@ -1207,7 +1270,7 @@ function renderAdminTable() {
 
     return `<tr data-id="${p.id}">
       <td>
-        <div class="prop-name-main">${p.name || p.id}</div>
+        <div class="prop-name-main">${PROP_NAMES[p.id] || p.name || p.id}</div>
         <div class="prop-name-sub">${p.fxDate || ''}</div>
       </td>
       <td>
@@ -1330,7 +1393,7 @@ async function openStatement(pid, preloaded) {
   // Apply any locally-stored revenue overrides before computing
   const _prop = _applyOverrides(activeProp, _periodCode);
   const c = computeProperty(_prop);
-  document.getElementById('modal-title').textContent = _prop.name + ' — ' + _activePeriod;
+  document.getElementById('modal-title').textContent = (PROP_NAMES[_prop.id] || _prop.name) + ' — ' + _activePeriod;
   const vKey = pid + '_' + _periodCode;
   const vInfo = STATEMENT_VERSIONS[vKey];
   const isSent = statuses[vKey] === 'sent' || statuses[pid] === 'sent';
@@ -1454,7 +1517,7 @@ function buildStatement(p, c, _activePeriod, _hasRevenue) {
     <div class="stmt-header">
       <div class="stmt-logo"><img src="data:image/png;base64,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" alt="wawa." style="height:44px;display:block;"></div>
       <div class="stmt-meta">
-        <div class="prop-name">${p.name}</div>
+        <div class="prop-name">${PROP_NAMES[p.id] || p.name}</div>
         <div class="period">${_activePeriod} · Owner Statement</div>
       </div>
     </div>
@@ -1560,7 +1623,7 @@ function _analyseProperty(p, c, period) {
   const bookings  = p.bookings  || [];
   const expenses  = p.expenses  || [];
   const pid       = p.id || '';
-  const propName  = p.name || 'This property';
+  const propName  = PROP_NAMES[p.id] || p.name || 'This property';
   const fxRate    = parseFloat(p.fxRate) || 11;
 
   if (bookings.length === 0) {
@@ -2217,7 +2280,7 @@ function renderFilteredTable() {
       const bookings = (p.bookings || []).length;
       rows.push(`<tr data-id="${p.id}" data-period="${code}">
         <td>
-          <div class="prop-name-main">${p.name || p.id}</div>
+          <div class="prop-name-main">${PROP_NAMES[p.id] || p.name || p.id}</div>
           <div class="prop-name-sub">${multiPeriod ? label : (p.fxDate || '')}</div>
         </td>
         <td>
@@ -2303,9 +2366,12 @@ const _activeCharts = {};
 function showAdminTab(tab) {
   document.getElementById('tab-statements').classList.toggle('on', tab === 'statements');
   document.getElementById('tab-analytics').classList.toggle('on', tab === 'analytics');
+  document.getElementById('tab-twg').classList.toggle('on', tab === 'twg');
   document.getElementById('admin-view').style.display      = tab === 'statements' ? 'block' : 'none';
   document.getElementById('analytics-view').style.display  = tab === 'analytics'  ? 'block' : 'none';
+  document.getElementById('twg-view').style.display        = tab === 'twg'         ? 'block' : 'none';
   if (tab === 'analytics') renderAnalytics();
+  if (tab === 'twg')       renderTWGEarnings();
 }
 
 function _destroyChart(id) {
@@ -2425,7 +2491,7 @@ function renderAnalytics() {
 
   // ── Aggregates ──
   const propsSorted = [...props].sort((a,b) => computeProperty(b).ownerPayout - computeProperty(a).ownerPayout);
-  const propNames   = props.map(p => (p.name || p.id).replace(/^The /, ''));
+  const propNames   = props.map(p => (PROP_NAMES[p.id] || p.name || p.id).replace(/^The /, ''));
   const propPayouts = props.map(p => computeProperty(p).ownerPayout);
   const propCogs    = props.map(p => computeProperty(p).cogsUSD);
   const allChMap    = {};
@@ -2980,6 +3046,147 @@ function _buildPropertyBlock(p, pCode) {
         </div>
       </div>
     </div>`;
+}
+function renderTWGEarnings() {
+  // Determine active periods (same as statements tab)
+  const sortedPeriods = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  const periodLabel   = sortedPeriods.length === 1 ? sortedPeriods[0]
+    : sortedPeriods.map(l => l.split(' ')[0].slice(0,3) + " '" + l.slice(-2)).join(', ');
+  const lbl = document.getElementById('twg-period-label');
+  if (lbl) lbl.textContent = periodLabel;
+
+  // Aggregate all properties across selected periods
+  const propMap = {}; // id → { name, bookings, usdRev, ghsRev, twgUSD, twgGHS, fxRate }
+  sortedPeriods.forEach(label => {
+    const code  = periodToCode(label);
+    const props = PERIOD_DATA[code] || Object.values(PROPERTIES).filter(p => p && p.id);
+    props.forEach(p => {
+      const c = computeProperty(_applyOverrides(p, code));
+      if (!propMap[p.id]) {
+        propMap[p.id] = { name: PROP_NAMES[p.id] || p.name || p.id, bookings:0,
+          usdRev:0, ghsRev:0, twgUSD:0, twgGHS:0, fxRate: parseFloat(p.fxRate)||11, twgPct: p.twgPct||15 };
+      }
+      const m = propMap[p.id];
+      m.bookings += (p.bookings||[]).length;
+      m.usdRev   += c.totalIncUSD;
+      m.ghsRev   += c.totalIncGHS;
+      m.twgUSD   += c.cogsUSD;
+      m.twgGHS   += c.cogsGHS;
+    });
+  });
+
+  const rows = Object.values(propMap);
+  if (rows.length === 0) {
+    const tb = document.getElementById('twg-tbody');
+    if (tb) tb.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--ink3)">No data — load a period on the Statements tab first.</td></tr>';
+    return;
+  }
+
+  // Totals
+  let totUSDRev=0, totGHSRev=0, totTWGUSD=0, totTWGGHS=0, totBookings=0;
+  rows.forEach(r => {
+    totUSDRev   += r.usdRev;
+    totGHSRev   += r.ghsRev;
+    totTWGUSD   += r.twgUSD;
+    totTWGGHS   += r.twgGHS;
+    totBookings += r.bookings;
+  });
+
+  // Average FX across portfolio
+  const avgFX = rows.reduce((s,r) => s + r.fxRate, 0) / rows.length;
+  const totTWGEquivUSD = totTWGUSD + (totTWGGHS / avgFX);
+  const totRevEquivUSD = totUSDRev + (totGHSRev / avgFX);
+
+  // Update KPI cards
+  const set = (id,v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('twg-total-usd',      fmtUSD(totTWGUSD));
+  set('twg-total-usd-sub',  totBookings + ' bookings across ' + rows.length + ' properties');
+  set('twg-total-ghs',      fmtGHS(totTWGGHS));
+  set('twg-total-ghs-sub',  'Local currency fee income');
+  set('twg-portfolio-rev',  fmtUSD(totUSDRev));
+  set('twg-portfolio-sub',  fmtGHS(totGHSRev) + ' GHS revenue');
+  set('twg-combined-usd',   fmtUSD(totTWGEquivUSD));
+  set('twg-combined-sub',   Math.round((totTWGEquivUSD / Math.max(totRevEquivUSD,1)) * 100) + '% of combined portfolio revenue');
+
+  // Build table rows — sorted by TWG fee descending
+  rows.sort((a,b) => (b.twgUSD + b.twgGHS/b.fxRate) - (a.twgUSD + a.twgGHS/a.fxRate));
+  const maxEquiv = Math.max(...rows.map(r => r.twgUSD + r.twgGHS/r.fxRate), 1);
+
+  const tb = document.getElementById('twg-tbody');
+  if (tb) tb.innerHTML = rows.map(r => {
+    const equiv   = r.twgUSD + (r.twgGHS / r.fxRate);
+    const barW    = Math.round((equiv / maxEquiv) * 100);
+    const feePct  = (r.usdRev + r.ghsRev/r.fxRate) > 0
+      ? Math.round((equiv / (r.usdRev + r.ghsRev/r.fxRate)) * 100) : r.twgPct;
+    return `<tr>
+      <td>
+        <div class="prop-name-main">${r.name}</div>
+        <div style="font-size:10px;color:var(--ink3)">${r.bookings} booking${r.bookings!==1?'s':''}</div>
+      </td>
+      <td style="color:var(--ink2)">${r.bookings}</td>
+      <td class="pos" style="font-weight:600">${fmtUSD(r.usdRev)}</td>
+      <td style="color:var(--ink2)">${fmtGHS(r.ghsRev)}</td>
+      <td style="color:var(--ink3)">${feePct}%</td>
+      <td class="pos" style="font-weight:700">${fmtUSD(r.twgUSD)}</td>
+      <td style="color:var(--ink2)">${fmtGHS(r.twgGHS)}</td>
+      <td>
+        <div style="font-weight:700;color:var(--gold)">${fmtUSD(equiv)}</div>
+        <div class="mini-bar-wrap"><div class="mini-bar gold" style="width:${barW}%"></div></div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Footer totals row
+  const tf = document.getElementById('twg-tfoot');
+  if (tf) tf.innerHTML = `<tr style="background:var(--paper2);font-weight:700;border-top:2px solid var(--br2)">
+    <td>TOTAL — ${rows.length} properties</td>
+    <td>${totBookings}</td>
+    <td class="pos">${fmtUSD(totUSDRev)}</td>
+    <td style="color:var(--ink2)">${fmtGHS(totGHSRev)}</td>
+    <td style="color:var(--ink3)">—</td>
+    <td class="pos">${fmtUSD(totTWGUSD)}</td>
+    <td style="color:var(--ink2)">${fmtGHS(totTWGGHS)}</td>
+    <td style="color:var(--gold);font-weight:700">${fmtUSD(totTWGEquivUSD)}</td>
+  </tr>`;
+
+  // Trend chart — last 6 months of TWG earnings
+  _destroyChart('twg-trend-chart');
+  const trendLabels = PERIOD_LABELS.slice(0,6).reverse();
+  const trendValues = trendLabels.map(label => {
+    const code  = periodToCode(label);
+    const props = PERIOD_DATA[code] || [];
+    return props.reduce((s, p) => {
+      const c = computeProperty(_applyOverrides(p, code));
+      const fx = parseFloat(p.fxRate)||11;
+      return s + c.cogsUSD + (c.cogsGHS / fx);
+    }, 0);
+  });
+  const ctx = document.getElementById('twg-trend-chart');
+  if (ctx && typeof Chart !== 'undefined') {
+    _activeCharts['twg-trend-chart'] = new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: trendLabels.map(l => l.split(' ')[0].slice(0,3) + " '" + l.slice(-2)),
+        datasets: [{
+          label: 'TWG Earnings (USD equiv)',
+          data: trendValues,
+          backgroundColor: 'rgba(184,147,61,0.75)',
+          borderColor: 'rgba(184,147,61,1)',
+          borderWidth: 1,
+          borderRadius: 5
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#78716c', font: { size: 11 } } },
+          y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#78716c', font: { size: 11 },
+            callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(1)+'k' : v) } }
+        }
+      }
+    });
+  }
 }
 </script>
 </body>
