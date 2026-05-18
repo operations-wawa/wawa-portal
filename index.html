@@ -829,9 +829,11 @@ function initPeriods() {
 }
 
 // ── Live sync state ───────────────────────────────────────────────
-let _lastSyncTime  = null;
-let _autoRefreshTimer = null;
-const AUTO_REFRESH_MS = 5 * 60 * 1000;  // 5 minutes
+let _lastSyncTime      = null;
+let _autoRefreshTimer  = null;
+let _labelTimer        = null;
+let _lastKnownModified = null;   // ISO timestamp from Apps Script _meta sheet
+const HEARTBEAT_MS = 30 * 1000; // lightweight check every 30 s
 
 function _setSyncUI(state) {
   const wrap = document.getElementById('sync-wrap');
@@ -863,6 +865,7 @@ function _updateSyncLabel() {
 }
 
 // Force-refresh the active period (bypasses PERIOD_DATA cache)
+// After refresh, re-renders any open statement modal automatically.
 async function refreshCurrentPeriod(silent) {
   const selEl  = document.getElementById('period-sel');
   const label  = selEl ? selEl.value : DEFAULT_PERIOD;
@@ -876,23 +879,77 @@ async function refreshCurrentPeriod(silent) {
     _lastSyncTime = Date.now();
     _setSyncUI('ok');
     if (!silent) addLog(`↺ Synced ${label} from tracker.`, 'ok');
+    // ── Re-render open statement modal with fresh data ────────────
+    const modalOpen = document.getElementById('modal-bg')?.classList.contains('open');
+    if (modalOpen && activeProp) {
+      const freshProp = PROPERTIES[activeProp.id] || activeProp;
+      openStatement(freshProp.id, freshProp);
+      if (!silent) addLog(`↻ Statement for ${PROP_NAMES[freshProp.id] || freshProp.name} refreshed.`, 'ok');
+    }
   } catch(e) {
     _setSyncUI('error');
     addLog('Sync error: ' + e.message, 'err');
   }
 }
 
-// Start auto-refresh (called after login)
-function _startAutoRefresh() {
-  if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
-  _autoRefreshTimer = setInterval(() => refreshCurrentPeriod(true), AUTO_REFRESH_MS);
-  // Update "X minutes ago" label every 60 s without re-fetching
-  setInterval(_updateSyncLabel, 60000);
+// Lightweight heartbeat — fetches only a timestamp, full refresh only on change
+async function _heartbeat() {
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=lastModified', { cache: 'no-store' });
+    const json = await res.json();
+    if (!json.ok) return;
+    const ts = json.ts || '';
+    if (!ts) return;
+    if (_lastKnownModified && ts !== _lastKnownModified) {
+      // Sheet was edited — find out which property was affected
+      const changedPid = json.pid || '';
+      const changedName = changedPid ? (PROP_NAMES[changedPid] || changedPid) : 'tracker';
+      addLog(`📋 ${changedName} updated in tracker — refreshing…`, 'info');
+      _showToast(`📋 ${changedName || 'Data'} updated — refreshing statements…`);
+      await refreshCurrentPeriod(true);
+    }
+    _lastKnownModified = ts;
+  } catch(e) {
+    // Heartbeat failures are silent — don't spam the log
+  }
 }
 
-// Stop auto-refresh on logout
+// Brief toast notification (auto-dismisses after 4 s)
+function _showToast(msg) {
+  let t = document.getElementById('wawa-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'wawa-toast';
+    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);' +
+      'background:var(--ink);color:var(--nv);padding:10px 20px;border-radius:8px;' +
+      'font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.18);' +
+      'transition:opacity .3s;pointer-events:none;white-space:nowrap;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+}
+
+// Start heartbeat (called after login)
+function _startAutoRefresh() {
+  if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+  if (_labelTimer)       clearInterval(_labelTimer);
+  // Lightweight heartbeat every 30 s — only full-fetches when sheet changes
+  _autoRefreshTimer = setInterval(_heartbeat, HEARTBEAT_MS);
+  // Update "X minutes ago" label every 60 s
+  _labelTimer = setInterval(_updateSyncLabel, 60000);
+  // Seed the known-modified timestamp on login so first heartbeat doesn't false-trigger
+  fetch(APPS_SCRIPT_URL + '?action=lastModified', { cache: 'no-store' })
+    .then(r => r.json()).then(j => { if (j.ok && j.ts) _lastKnownModified = j.ts; })
+    .catch(() => {});
+}
+
+// Stop heartbeat on logout
 function _stopAutoRefresh() {
   if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
+  if (_labelTimer)       { clearInterval(_labelTimer);       _labelTimer = null; }
 }
 
 async function loadAllPeriods() {
@@ -1277,6 +1334,7 @@ function logout() {
   currentProp = null;
   _stopAutoRefresh();
   _lastSyncTime = null;
+  _lastKnownModified = null;
   const sw = document.getElementById('sync-wrap');
   if (sw) sw.style.display = 'none';
   const anlLbl = document.getElementById('fp-label-anl-period');
