@@ -572,6 +572,17 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
   <div id="analytics-view">
     <div class="page-title">Analytics <span style="color:var(--gold)">Dashboard</span></div>
     <div class="page-desc">Visual breakdown of bookings, channels, and expenses per property for the selected period.</div>
+    <div class="ctrl-bar" style="margin-bottom:24px">
+      <div class="filter-popup-wrap" id="fp-wrap-anl-period">
+        <button class="filter-btn" id="fp-btn-anl-period" onclick="toggleTabFilterDropdown('anl-period')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span id="fp-label-anl-period">Loading…</span>
+        </button>
+        <div class="filter-popup" id="fp-popup-anl-period" style="display:none">
+          <!-- populated by initPeriods() -->
+        </div>
+      </div>
+    </div>
     <div id="analytics-container">
       <div style="padding:40px;text-align:center;color:var(--ink3)">Loading data — switch to Statements tab first to load a period, then return here.</div>
     </div>
@@ -581,6 +592,17 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
   <div id="twg-view" style="display:none;padding:36px 40px;max-width:1200px;margin:0 auto;">
     <div class="page-title">TWG <span style="color:var(--gold)">Earnings</span></div>
     <div class="page-desc">Management fee income earned by Wawa Group across all properties for the selected period.</div>
+    <div class="ctrl-bar" style="margin-bottom:24px">
+      <div class="filter-popup-wrap" id="fp-wrap-twg-period">
+        <button class="filter-btn" id="fp-btn-twg-period" onclick="toggleTabFilterDropdown('twg-period')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span id="fp-label-twg-period">Loading…</span>
+        </button>
+        <div class="filter-popup" id="fp-popup-twg-period" style="display:none">
+          <!-- populated by initPeriods() -->
+        </div>
+      </div>
+    </div>
 
     <!-- KPI strip -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:28px 0 32px;">
@@ -789,6 +811,21 @@ function initPeriods() {
     const yr = DEFAULT_PERIOD.slice(-2);
     lbl.textContent = `${mo} '${yr}`;
   }
+  // Build period dropdowns for Analytics and TWG tabs
+  ['anl-period', 'twg-period'].forEach(ns => {
+    const p2 = document.getElementById('fp-popup-' + ns);
+    if (!p2) return;
+    p2.innerHTML = '<div class="filter-popup-header">Select Period</div>' +
+      PERIOD_LABELS.map((l, i) => `
+        <div class="filter-popup-item${i === 0 ? ' checked' : ''}" onclick="toggleTabPeriod('${ns}','${l}')">
+          <input type="checkbox" data-tabperiod="${ns}|${l}"${i === 0 ? ' checked' : ''}
+            onclick="event.stopPropagation()" onchange="toggleTabPeriod('${ns}','${l}')">
+          ${l}
+        </div>`).join('') +
+      '<div class="filter-popup-footer"><button class="filter-clear" onclick="toggleTabFilterDropdown(\'' + ns + '\')">Done</button></div>';
+    const lbl2 = document.getElementById('fp-label-' + ns);
+    if (lbl2) lbl2.textContent = DEFAULT_PERIOD;
+  });
 }
 
 // ── Live sync state ───────────────────────────────────────────────
@@ -1233,6 +1270,8 @@ function logout() {
   Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
   Object.keys(statuses).forEach(k => delete statuses[k]);
   filterPeriods = new Set([DEFAULT_PERIOD]);
+  analyticsPeriods = new Set([DEFAULT_PERIOD]);
+  twgPeriods       = new Set([DEFAULT_PERIOD]);
   filterProps.clear();
   activeProp = null;
   currentProp = null;
@@ -1240,6 +1279,10 @@ function logout() {
   _lastSyncTime = null;
   const sw = document.getElementById('sync-wrap');
   if (sw) sw.style.display = 'none';
+  const anlLbl = document.getElementById('fp-label-anl-period');
+  if (anlLbl) anlLbl.textContent = 'Loading…';
+  const twgLbl = document.getElementById('fp-label-twg-period');
+  if (twgLbl) twgLbl.textContent = 'Loading…';
   auditLog('LOGOUT', 'admin');
 }
 
@@ -2067,6 +2110,8 @@ async function sendVia(ch) {
 
 // ── DYNAMIC FILTER STATE ────────────────────────────────────────────
 let filterPeriods = new Set([DEFAULT_PERIOD]);
+let analyticsPeriods = new Set([DEFAULT_PERIOD]);
+let twgPeriods       = new Set([DEFAULT_PERIOD]);
 let filterProps   = new Set(); // empty = all properties
 
 const PROP_NAMES = {
@@ -2077,7 +2122,7 @@ const PROP_NAMES = {
 
 // Close any open filter popups when clicking outside
 document.addEventListener('click', e => {
-  ['period','prop'].forEach(which => {
+  ['period','prop','anl-period','twg-period'].forEach(which => {
     const wrap = document.getElementById('fp-wrap-' + which);
     if (wrap && !wrap.contains(e.target)) {
       const popup = document.getElementById('fp-popup-' + which);
@@ -2100,6 +2145,51 @@ function toggleFilterDropdown(which) {
   // toggle this
   popup.style.display = isOpen ? 'none' : 'block';
   btn.classList.toggle('open', !isOpen);
+}
+
+function toggleTabFilterDropdown(ns) {
+  // Close all other tab popups first
+  ['anl-period','twg-period'].forEach(other => {
+    if (other === ns) return;
+    const op = document.getElementById('fp-popup-' + other);
+    if (op) op.style.display = 'none';
+    document.getElementById('fp-btn-' + other)?.classList.remove('open');
+  });
+  const popup = document.getElementById('fp-popup-' + ns);
+  const btn   = document.getElementById('fp-btn-' + ns);
+  if (!popup) return;
+  const isOpen = popup.style.display !== 'none';
+  popup.style.display = isOpen ? 'none' : 'block';
+  btn?.classList.toggle('open', !isOpen);
+}
+
+function toggleTabPeriod(ns, label) {
+  const setMap    = { 'anl-period': analyticsPeriods, 'twg-period': twgPeriods };
+  const renderMap = { 'anl-period': renderAnalytics,   'twg-period': renderTWGEarnings };
+  const set = setMap[ns];
+  if (!set) return;
+  set.clear();
+  set.add(label);
+  // Sync checkboxes
+  document.querySelectorAll(`[data-tabperiod^="${ns}|"]`).forEach(cb => {
+    const checked = cb.dataset.tabperiod === ns + '|' + label;
+    cb.checked = checked;
+    cb.closest('.filter-popup-item')?.classList.toggle('checked', checked);
+  });
+  // Update button label
+  const lbl = document.getElementById('fp-label-' + ns);
+  if (lbl) lbl.textContent = label;
+  // Close popup
+  const popup = document.getElementById('fp-popup-' + ns);
+  if (popup) popup.style.display = 'none';
+  document.getElementById('fp-btn-' + ns)?.classList.remove('open');
+  // Load period data if not cached, then re-render
+  const code = periodToCode(label);
+  if (!PERIOD_DATA[code]) {
+    _ensurePeriodsLoaded([label]).then(() => renderMap[ns]?.());
+  } else {
+    renderMap[ns]?.();
+  }
 }
 
 function togglePeriodFilter(label) {
@@ -2456,12 +2546,12 @@ function _mkHBar(id, labels, datasets) {
 function renderAnalytics() {
   // ── Respect the shared filter state ──
   // Primary period = most recent selected period
-  const primaryPeriod = PERIOD_LABELS.find(l => filterPeriods.has(l)) || DEFAULT_PERIOD;
+  const primaryPeriod = PERIOD_LABELS.find(l => analyticsPeriods.has(l)) || DEFAULT_PERIOD;
   const pCode         = periodToCode(primaryPeriod);
 
   // Collect props for each selected period (merge by id, primary period wins)
   const _allPeriodProps = {};
-  PERIOD_LABELS.filter(l => filterPeriods.has(l)).forEach(label => {
+  PERIOD_LABELS.filter(l => analyticsPeriods.has(l)).forEach(label => {
     const code = periodToCode(label);
     const src  = PERIOD_DATA[code] || (code === pCode ? Object.values(PROPERTIES) : []);
     src.forEach(p => { if (p && p.id) _allPeriodProps[p.id] = _allPeriodProps[p.id] || p; });
@@ -2474,7 +2564,7 @@ function renderAnalytics() {
   if (filterProps.size > 0) props = props.filter(p => filterProps.has(p.id));
 
   // Build a friendly label for the active filter
-  const sortedFilterPeriods = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  const sortedFilterPeriods = PERIOD_LABELS.filter(l => analyticsPeriods.has(l));
   const periodLabel = sortedFilterPeriods.length === 1 ? sortedFilterPeriods[0]
     : sortedFilterPeriods.map(l => l.split(' ')[0].slice(0,3) + " '" + l.slice(-2)).join(', ');
   const propFilterLabel = filterProps.size > 0
@@ -2543,7 +2633,7 @@ function renderAnalytics() {
 
   container.innerHTML = `
     <!-- FILTER CONTEXT BADGE -->
-    ${(filterProps.size > 0 || filterPeriods.size > 1) ? `
+    ${(filterProps.size > 0 || analyticsPeriods.size > 1) ? `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:9px 14px;background:var(--gold-pale);border:1px solid rgba(201,151,26,.35);border-radius:8px;font-size:11px;color:var(--ink2);">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;color:var(--gold)"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <span>Showing: <strong>${periodLabel}${propFilterLabel}</strong></span>
@@ -3049,7 +3139,7 @@ function _buildPropertyBlock(p, pCode) {
 }
 function renderTWGEarnings() {
   // Determine active periods (same as statements tab)
-  const sortedPeriods = PERIOD_LABELS.filter(l => filterPeriods.has(l));
+  const sortedPeriods = PERIOD_LABELS.filter(l => twgPeriods.has(l));
   const periodLabel   = sortedPeriods.length === 1 ? sortedPeriods[0]
     : sortedPeriods.map(l => l.split(' ')[0].slice(0,3) + " '" + l.slice(-2)).join(', ');
   const lbl = document.getElementById('twg-period-label');
