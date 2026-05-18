@@ -357,6 +357,25 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
 .filter-pill .pill-x:hover{color:var(--rd);}
 .filter-clear{font-size:11px;color:var(--tx3);cursor:pointer;padding:2px 0;transition:color .15s;background:none;border:none;font-family:'Work Sans',sans-serif;}
 .filter-clear:hover{color:var(--rd);}
+/* ── Anomaly alerts ── */
+.alert-strip-title{font-size:10px;font-weight:700;letter-spacing:.7px;color:var(--ink3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.alert-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;font-size:12px;margin-bottom:5px;line-height:1.45;}
+.alert-error{background:var(--red-bg);border:1px solid rgba(192,57,43,.25);color:var(--red);}
+.alert-warn{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.22);color:#a06000;}
+.alert-info{background:var(--gold-pale);border:1px solid rgba(184,147,61,.2);color:var(--gold);}
+.alert-action-btn{background:none;border:1px solid currentColor;border-radius:4px;padding:2px 9px;font-size:10px;font-weight:700;cursor:pointer;color:inherit;font-family:'Work Sans',sans-serif;white-space:nowrap;}
+/* ── NL filter bar ── */
+.nl-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.nl-input{flex:1;border:1px solid var(--br2);border-radius:8px;padding:7px 12px;font-size:12px;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;transition:border .15s;}
+.nl-input:focus{outline:none;border-color:var(--gold);}
+/* ── Chat FAB & modal ── */
+#chat-fab{display:none;position:fixed;bottom:28px;right:28px;width:52px;height:52px;border-radius:50%;background:var(--gold);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(184,147,61,.4);z-index:300;transition:transform .18s;align-items:center;justify-content:center;}
+#chat-fab:hover{transform:scale(1.08);}
+#chat-modal{display:none;position:fixed;bottom:92px;right:28px;width:380px;background:var(--nv);border:1px solid var(--br2);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:300;flex-direction:column;overflow:hidden;max-height:520px;}
+.chat-bubble-user{align-self:flex-end;background:var(--gold);color:#fff;padding:8px 12px;border-radius:12px 12px 2px 12px;font-size:12px;max-width:85%;line-height:1.5;}
+.chat-bubble-ai{align-self:flex-start;background:var(--paper2);border:1px solid var(--br);padding:8px 12px;border-radius:2px 12px 12px 12px;font-size:12px;max-width:92%;line-height:1.6;color:var(--ink2);}
+/* ── Forecast chip ── */
+.forecast-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(36,113,163,.08);border:1px solid rgba(36,113,163,.2);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--blue);}
 .tbl-period-sep td{background:var(--nv);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);padding:6px 14px;border-bottom:1px solid var(--br);}
 
 /* ── VARIANCE ALERTS ── */
@@ -514,6 +533,20 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
         <div class="run-lbl" id="run-lbl">Initialising…</div>
       </div>
     </div>
+    <!-- NL smart filter bar -->
+    <div class="nl-bar">
+      <input class="nl-input" id="nl-filter-input" placeholder='Smart filter — try "April 2026", "last 3 months", "Chelsea", "Q1"…'
+        onkeydown="if(event.key==='Enter'){applyNLFilter();}" />
+      <button class="btn-run btn-ghost" onclick="applyNLFilter()" style="padding:7px 14px;font-size:11px">Filter</button>
+      <button class="btn-run btn-ghost" onclick="clearNLFilter()" style="padding:7px 10px;font-size:11px" title="Clear filter">✕</button>
+    </div>
+
+    <!-- End-of-month workflow banner -->
+    <div id="eom-banner"></div>
+
+    <!-- Anomaly alert strip -->
+    <div id="alert-strip" style="display:none;margin-bottom:14px"></div>
+
     <!-- Active filter pills -->
     <div class="filter-pills" id="filter-pills-row" style="display:none;"></div>
 
@@ -879,6 +912,8 @@ async function refreshCurrentPeriod(silent) {
     _lastSyncTime = Date.now();
     _setSyncUI('ok');
     if (!silent) addLog(`↺ Synced ${label} from tracker.`, 'ok');
+    // ── Run agentic checks on every data refresh ──────────────────
+    _runAgenticChecks();
     // ── Re-render open statement modal with fresh data ────────────
     const modalOpen = document.getElementById('modal-bg')?.classList.contains('open');
     if (modalOpen && activeProp) {
@@ -1298,6 +1333,8 @@ function login() {
   document.getElementById('app').style.display = 'block';
   auditLog('LOGIN', 'admin');
   document.getElementById('topbar-name').textContent = 'Admin';
+  const chatFab = document.getElementById('chat-fab');
+  if (chatFab) chatFab.style.display = 'flex';
   document.getElementById('admin-sub-nav').style.display = 'flex';
   document.getElementById('admin-view').style.display = 'block';
   initPeriods();           // build period dropdown + filter items from PERIOD_LABELS
@@ -1335,6 +1372,15 @@ function logout() {
   _stopAutoRefresh();
   _lastSyncTime = null;
   _lastKnownModified = null;
+  _chatHistory = [];
+  const chatFab = document.getElementById('chat-fab');
+  if (chatFab) chatFab.style.display = 'none';
+  const chatModal = document.getElementById('chat-modal');
+  if (chatModal) chatModal.style.display = 'none';
+  const alertStrip = document.getElementById('alert-strip');
+  if (alertStrip) alertStrip.style.display = 'none';
+  const eomBanner = document.getElementById('eom-banner');
+  if (eomBanner) eomBanner.innerHTML = '';
   const sw = document.getElementById('sync-wrap');
   if (sw) sw.style.display = 'none';
   const anlLbl = document.getElementById('fp-label-anl-period');
@@ -3148,6 +3194,7 @@ function _buildPropertyBlock(p, pCode) {
           <div class="metric-item"><div class="metric-lbl">RevPAN</div><div class="metric-val">${fmtUSD(occ.revpan)}</div><div class="metric-sub">Revenue / available night</div></div>
           <div class="metric-item"><div class="metric-lbl">Top Channel</div><div class="metric-val" style="font-size:12px">${topCh?topCh[0]:'—'}</div><div class="metric-sub">${topCh?fmtUSD(topCh[1])+' revenue':''}</div></div>
           <div class="metric-item"><div class="metric-lbl">Fee + Exp Ratio</div><div class="metric-val" style="color:${ratioClr}">${costRatio.toFixed(1)}%</div><div class="metric-sub">of USD income</div></div>
+          ${(()=>{const fc=_computeForecast(p.id);return fc?`<div class="metric-item"><div class="metric-lbl">Next Month Forecast</div><div class="metric-val forecast-chip">${fc.trend} ${fmtUSD(fc.forecast)}</div><div class="metric-sub">${Math.round(fc.r2*100)}% confidence · ${fc.n} data pts</div></div>`:''})()}
         </div>
         <!-- ② Channels -->
         <div>
@@ -3336,6 +3383,375 @@ function renderTWGEarnings() {
     });
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// FEATURE 1 — ANOMALY & ALERT ENGINE
+// Auto-runs on every data load. Flags missing revenue, low occupancy,
+// expense spikes, and negative payouts above the portfolio table.
+// ═══════════════════════════════════════════════════════════════════
+function _runAnomalyCheck() {
+  const selEl = document.getElementById('period-sel');
+  const label = selEl ? selEl.value : DEFAULT_PERIOD;
+  const code  = periodToCode(label);
+  const props = PERIOD_DATA[code] || Object.values(PROPERTIES).filter(p => p && p.id);
+  const strip = document.getElementById('alert-strip');
+  if (!strip || props.length === 0) return;
+
+  const alerts  = [];
+  const periodIdx = PERIOD_LABELS.indexOf(label);
+  const prevLabel = periodIdx >= 0 ? PERIOD_LABELS[periodIdx + 1] : null;
+  const prevCode  = prevLabel ? periodToCode(prevLabel) : null;
+
+  props.forEach(p => {
+    const c    = computeProperty(_applyOverrides(p, code));
+    const occ  = computeOccupancyMetrics(p, code);
+    const name = PROP_NAMES[p.id] || p.name || p.id;
+    const bkgs = p.bookings || [];
+
+    // Missing revenue
+    const hasRev = bkgs.some(b => _bookingUSD(b) > 0 || _bookingGHS(b) > 0);
+    if (bkgs.length > 0 && !hasRev)
+      alerts.push({ level:'error', pid:p.id,
+        msg:`<b>${name}</b> has ${bkgs.length} booking${bkgs.length>1?'s':''} but no revenue entered.`,
+        actionLabel:'Enter Revenue', action:`openStatement('${p.id}')` });
+
+    // No bookings
+    if (bkgs.length === 0)
+      alerts.push({ level:'warn', pid:p.id,
+        msg:`<b>${name}</b> has no bookings recorded for ${label}.` });
+
+    // Below 80% occupancy
+    if (bkgs.length > 0 && occ.occupancy < 80)
+      alerts.push({ level:'warn', pid:p.id,
+        msg:`<b>${name}</b> occupancy ${occ.occupancy.toFixed(0)}% is below the 80% TWG target.`,
+        actionLabel:'View', action:`openStatement('${p.id}')` });
+
+    // Negative net payout
+    if (c.ownerPayout < 0)
+      alerts.push({ level:'error', pid:p.id,
+        msg:`<b>${name}</b> net payout is ${fmtUSD(c.ownerPayout)} — expenses exceed combined income.`,
+        actionLabel:'Review', action:`openStatement('${p.id}')` });
+
+    // Expense spike >30% vs prior month
+    if (prevCode && PERIOD_DATA[prevCode]) {
+      const pp = PERIOD_DATA[prevCode].find(x => x.id === p.id);
+      if (pp) {
+        const pc = computeProperty(_applyOverrides(pp, prevCode));
+        if (pc.expGHS > 0 && c.expGHS > pc.expGHS * 1.3) {
+          const spike = Math.round(((c.expGHS - pc.expGHS) / pc.expGHS) * 100);
+          alerts.push({ level:'warn', pid:p.id,
+            msg:`<b>${name}</b> expenses up <b>${spike}%</b> vs ${prevLabel} (${fmtGHS(pc.expGHS)} → ${fmtGHS(c.expGHS)}).`,
+            actionLabel:'Review', action:`openStatement('${p.id}')` });
+        }
+      }
+    }
+  });
+
+  if (alerts.length === 0) { strip.style.display = 'none'; return; }
+  const icons = { error:'⚠', warn:'⚡', info:'ℹ' };
+  strip.style.display = 'block';
+  strip.innerHTML =
+    `<div class="alert-strip-title">
+       <span>Portfolio Alerts — ${label} &nbsp;<span style="font-weight:400;opacity:.7">${alerts.length} issue${alerts.length>1?'s':''}</span></span>
+       <span style="cursor:pointer;font-size:10px;font-weight:500" onclick="document.getElementById('alert-strip').style.display='none'">Dismiss all ×</span>
+     </div>` +
+    alerts.map(a =>
+      `<div class="alert-item alert-${a.level}">
+         <span style="font-size:15px;flex-shrink:0">${icons[a.level]||'•'}</span>
+         <span style="flex:1">${a.msg}</span>
+         ${a.action ? `<button class="alert-action-btn" onclick="${a.action}">${a.actionLabel}</button>` : ''}
+       </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FEATURE 2 — PORTFOLIO AI CHAT
+// Floating chat button. Sends full portfolio context to Claude API.
+// ═══════════════════════════════════════════════════════════════════
+let _chatHistory = [];
+
+function toggleChat() {
+  const modal = document.getElementById('chat-modal');
+  const fab   = document.getElementById('chat-fab');
+  if (!modal) return;
+  const isOpen = modal.style.display === 'flex';
+  modal.style.display = isOpen ? 'none' : 'flex';
+  if (fab) fab.style.background = isOpen ? 'var(--gold)' : 'var(--ink)';
+  if (!isOpen) {
+    if (_chatHistory.length === 0)
+      _appendChatMsg('ai', 'Hi! I have full visibility of your portfolio data for the active period. Ask me anything — occupancy, revenue trends, expense analysis, or comparisons between properties.');
+    document.getElementById('chat-input')?.focus();
+  }
+}
+
+function _appendChatMsg(role, html) {
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+  const div = document.createElement('div');
+  div.className = role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai';
+  div.innerHTML = html.replace(/\n/g, '<br>');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function _buildPortfolioContext() {
+  const selEl = document.getElementById('period-sel');
+  const label = selEl ? selEl.value : DEFAULT_PERIOD;
+  const code  = periodToCode(label);
+  const props = PERIOD_DATA[code] || Object.values(PROPERTIES).filter(p => p && p.id);
+  let ctx = `Portfolio: Wawa Group, Ghana. Period: ${label}. TWG management fee: 15%. Occupancy target: 80%.\n\nProperty breakdown:\n`;
+  props.forEach((p, i) => {
+    const c    = computeProperty(_applyOverrides(p, code));
+    const occ  = computeOccupancyMetrics(p, code);
+    const name = PROP_NAMES[p.id] || p.name || p.id;
+    const fx   = parseFloat(p.fxRate) || 11;
+    const comb = c.totalIncUSD + c.totalIncGHS / fx;
+    ctx += `\n${i+1}. ${name}\n`;
+    ctx += `  Bookings: ${(p.bookings||[]).length}, Nights: ${occ.totalNights}, Occupancy: ${occ.occupancy.toFixed(0)}%\n`;
+    ctx += `  Revenue: ${fmtUSD(c.totalIncUSD)} USD + ${fmtGHS(c.totalIncGHS)} GHS = ${fmtUSD(comb)} combined (FX ${fx})\n`;
+    ctx += `  TWG fee: ${fmtUSD(c.cogsUSD)}, Expenses: ${fmtGHS(c.expGHS)} (${(p.expenses||[]).length} items)\n`;
+    ctx += `  Net payout: ${fmtUSD(c.ownerPayout)}\n`;
+    ctx += `  Channels: ${[...new Set((p.bookings||[]).map(b=>b.platform||'Unknown'))].join(', ')}\n`;
+  });
+  // YTD summary
+  let ytdRev = 0, ytdPay = 0, ytdMos = 0;
+  PERIOD_LABELS.slice(0,12).forEach(l => {
+    const pd = PERIOD_DATA[periodToCode(l)];
+    if (pd) { pd.forEach(p => { const c = computeProperty(p); ytdRev += c.totalIncUSD; ytdPay += c.ownerPayout; }); ytdMos++; }
+  });
+  if (ytdMos > 0) ctx += `\nYTD (${ytdMos} months loaded): ~${fmtUSD(ytdRev)} USD revenue, ~${fmtUSD(ytdPay)} owner payouts.\n`;
+  return ctx;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = (input?.value || '').trim();
+  if (!msg) return;
+  const key = _getAnthropicKey();
+  if (!key) {
+    _appendChatMsg('ai', '⚠ No Anthropic API key configured. Go to ⚙ Settings → Anthropic API Key to add it.');
+    return;
+  }
+  input.value = '';
+  _appendChatMsg('user', msg);
+  _chatHistory.push({ role:'user', content: msg });
+  const thinking = _appendChatMsg('ai', '<span style="opacity:.5">Thinking…</span>');
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key':key, 'anthropic-version':'2023-06-01',
+        'content-type':'application/json', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 700,
+        system: `You are a property management assistant for Wawa Group in Ghana. Answer concisely in plain text (no markdown). Be precise with numbers and currencies. Never confuse USD and GHS.\n\n${_buildPortfolioContext()}`,
+        messages: _chatHistory.slice(-10)
+      })
+    });
+    const data  = await res.json();
+    const reply = data.content?.[0]?.text || 'No response received.';
+    thinking.innerHTML = reply.replace(/\n/g,'<br>');
+    _chatHistory.push({ role:'assistant', content: reply });
+  } catch(e) {
+    thinking.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FEATURE 3 — END-OF-MONTH WORKFLOW
+// Detects when prior month data is complete and prompts for dispatch.
+// ═══════════════════════════════════════════════════════════════════
+function _checkEndOfMonth() {
+  const banner = document.getElementById('eom-banner');
+  if (!banner) return;
+  const today      = new Date();
+  const dayOfMonth = today.getDate();
+  if (dayOfMonth > 10) { banner.innerHTML = ''; return; }
+
+  const priorLabel = PERIOD_LABELS[1]; // immediately preceding month
+  if (!priorLabel) return;
+  const priorCode = periodToCode(priorLabel);
+  const priorData = PERIOD_DATA[priorCode];
+  if (!priorData || priorData.length === 0) return;
+
+  // Check if all statements already sent
+  const allSent = priorData.every(p => statuses[p.id] === 'sent');
+  if (allSent) { banner.innerHTML = ''; return; }
+
+  const total      = priorData.length;
+  const withRev    = priorData.filter(p => (p.bookings||[]).some(b => _bookingUSD(b)>0 || _bookingGHS(b)>0)).length;
+  const withExp    = priorData.filter(p => (p.expenses||[]).length > 0).length;
+  const ready      = withRev === total;
+  const sentCount  = priorData.filter(p => statuses[p.id] === 'sent').length;
+
+  const color  = ready ? 'rgba(45,138,94,.1)'   : 'rgba(245,166,35,.09)';
+  const border = ready ? 'rgba(45,138,94,.3)'    : 'rgba(245,166,35,.28)';
+  const icon   = ready ? '✅' : '⏳';
+
+  banner.innerHTML = `
+    <div style="background:${color};border:1px solid ${border};border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+      <span style="font-size:20px;flex-shrink:0">${icon}</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px;color:var(--ink)">${priorLabel} Statements — ${ready?'Ready to Dispatch':'Data Entry In Progress'}</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:3px">
+          ${withRev}/${total} properties have revenue · ${withExp}/${total} have expenses · ${sentCount}/${total} sent
+          ${!ready ? ` · <b style="color:var(--red)">${total-withRev} missing revenue</b>` : ''}
+        </div>
+      </div>
+      ${ready
+        ? `<button class="btn-run" onclick="_eomGenerate('${priorLabel}')" style="font-size:11px;padding:7px 16px;white-space:nowrap">▶ Generate &amp; Send ${priorLabel}</button>`
+        : `<button class="btn-run btn-ghost" onclick="_switchToLabel('${priorLabel}')" style="font-size:11px;padding:7px 14px;white-space:nowrap">Review ${priorLabel}</button>`}
+      <button onclick="this.closest('div').parentElement.innerHTML=''" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:18px;line-height:1;padding:0 4px">×</button>
+    </div>`;
+}
+
+function _switchToLabel(label) {
+  togglePeriodFilter(label);
+  showAdminTab('statements');
+}
+
+function _eomGenerate(label) {
+  _switchToLabel(label);
+  setTimeout(() => runStatements(), 400);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FEATURE 4 — NATURAL LANGUAGE SMART FILTER
+// Parses plain-English queries into period + property filters.
+// No API required — pure JS keyword matching.
+// ═══════════════════════════════════════════════════════════════════
+async function applyNLFilter() {
+  const input = document.getElementById('nl-filter-input');
+  const query = (input?.value || '').trim().toLowerCase();
+  if (!query) return;
+
+  const MONTH_MAP = {
+    jan:'January',feb:'February',mar:'March',apr:'April',may:'May',jun:'June',
+    jul:'July',aug:'August',sep:'September',oct:'October',nov:'November',dec:'December',
+    january:'January',february:'February',march:'March',april:'April',june:'June',
+    july:'July',august:'August',september:'September',october:'October',
+    november:'November',december:'December'
+  };
+
+  let matchedPeriods = [];
+  const yearMatch = query.match(/20\d\d/);
+  const year = yearMatch ? yearMatch[0] : new Date().getFullYear().toString();
+
+  // Explicit month mentions
+  Object.entries(MONTH_MAP).forEach(([abbr, full]) => {
+    if (new RegExp(`\\b${abbr}\\b`).test(query)) {
+      const candidate = `${full} ${year}`;
+      if (PERIOD_LABELS.includes(candidate) && !matchedPeriods.includes(candidate))
+        matchedPeriods.push(candidate);
+    }
+  });
+
+  // "last N months"
+  const lastN = query.match(/last\s+(\d+)\s+month/);
+  if (lastN) matchedPeriods = PERIOD_LABELS.slice(0, parseInt(lastN[1]));
+
+  // "this year" / "ytd" / "q1/q2/q3/q4"
+  if (/this year|ytd/.test(query))
+    matchedPeriods = PERIOD_LABELS.filter(l => l.includes(new Date().getFullYear()));
+  const qtr = query.match(/\bq([1-4])\b/);
+  if (qtr) {
+    const qMap = { '1':['January','February','March'], '2':['April','May','June'],
+                   '3':['July','August','September'],  '4':['October','November','December'] };
+    const months = qMap[qtr[1]];
+    matchedPeriods = PERIOD_LABELS.filter(l => months.some(m => l.startsWith(m)) && l.includes(year));
+  }
+
+  // Property name matching
+  const matchedProps = new Set();
+  Object.entries(PROP_NAMES).forEach(([id, name]) => {
+    const nl = name.toLowerCase().replace(/^the /, '');
+    if (query.includes(nl) || query.includes(id.replace(/_/g,' ')))
+      matchedProps.add(id);
+  });
+
+  // Apply
+  if (matchedPeriods.length > 0) {
+    filterPeriods = new Set(matchedPeriods);
+    await _ensurePeriodsLoaded(matchedPeriods);
+    const sel = document.getElementById('period-sel');
+    if (sel) sel.value = matchedPeriods[0];
+  }
+  if (matchedProps.size > 0) filterProps = matchedProps;
+
+  renderFilteredTable();
+  renderFilterPills();
+  addLog(`🔍 Filter: "${input.value.trim()}" → ${matchedPeriods.length || '(current)'} period(s), ${matchedProps.size || 'all'} properties`, 'info');
+}
+
+function clearNLFilter() {
+  const input = document.getElementById('nl-filter-input');
+  if (input) input.value = '';
+  filterPeriods = new Set([DEFAULT_PERIOD]);
+  filterProps.clear();
+  const sel = document.getElementById('period-sel');
+  if (sel) sel.value = DEFAULT_PERIOD;
+  renderFilteredTable();
+  renderFilterPills();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FEATURE 5 — REVENUE FORECASTING
+// Linear regression over last 6 months → next-month projection.
+// Displayed as a forecast chip in the analytics property cards.
+// ═══════════════════════════════════════════════════════════════════
+function _computeForecast(pid) {
+  const points = [];
+  PERIOD_LABELS.slice(0, 6).reverse().forEach((label, i) => {
+    const pd = PERIOD_DATA[periodToCode(label)];
+    if (!pd) return;
+    const prop = pd.find(p => p.id === pid);
+    if (!prop) return;
+    const c  = computeProperty(_applyOverrides(prop, periodToCode(label)));
+    const fx = parseFloat(prop.fxRate) || 11;
+    points.push({ x: i, y: c.totalIncUSD + c.totalIncGHS / fx });
+  });
+  if (points.length < 3) return null;
+  const n    = points.length;
+  const sx   = points.reduce((s,p)=>s+p.x,0);
+  const sy   = points.reduce((s,p)=>s+p.y,0);
+  const sxy  = points.reduce((s,p)=>s+p.x*p.y,0);
+  const sx2  = points.reduce((s,p)=>s+p.x*p.x,0);
+  const denom = n*sx2 - sx*sx;
+  if (denom === 0) return null;
+  const m    = (n*sxy - sx*sy) / denom;
+  const b    = (sy - m*sx) / n;
+  const fore = Math.max(0, m*n + b);
+  const yMean = sy / n;
+  const ssTot = points.reduce((s,p)=>s+(p.y-yMean)**2,0);
+  const ssRes = points.reduce((s,p)=>s+(p.y-(m*p.x+b))**2,0);
+  const r2    = ssTot > 0 ? Math.max(0, 1-ssRes/ssTot) : 0;
+  const trend = m > 0 ? '↑' : m < 0 ? '↓' : '→';
+  return { forecast: fore, trend, r2, n };
+}
+
+// Called after data loads — hook into loadLiveData completion
+function _runAgenticChecks() {
+  _runAnomalyCheck();
+  _checkEndOfMonth();
+}
 </script>
+
+<!-- ── PORTFOLIO ASSISTANT CHAT ── -->
+<button id="chat-fab" onclick="toggleChat()" title="Portfolio Assistant" style="display:flex">💬</button>
+<div id="chat-modal" style="display:none;flex-direction:column">
+  <div style="padding:14px 18px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;background:var(--paper2);flex-shrink:0">
+    <div>
+      <div style="font-weight:700;font-size:13px;color:var(--ink)">Portfolio Assistant</div>
+      <div style="font-size:10px;color:var(--ink3)">Ask anything about your properties</div>
+    </div>
+    <button onclick="toggleChat()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink3);line-height:1">×</button>
+  </div>
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:180px;max-height:320px;"></div>
+  <div style="padding:10px 12px;border-top:1px solid var(--br);display:flex;gap:8px;flex-shrink:0;background:var(--paper2)">
+    <input id="chat-input" class="nl-input" placeholder="Ask about your portfolio…"
+      style="flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}">
+    <button onclick="sendChat()" class="btn-run" style="padding:7px 14px;font-size:11px">Send</button>
+  </div>
+</div>
 </body>
 </html>
