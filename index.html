@@ -1124,7 +1124,7 @@ function updateDashboardStats(data, period) {
   let topExpProp = null, topExpVal = 0;
   data.forEach(o => {
     const expGHS = o.expGHS || (o.expenses || []).reduce((s, e) => s + (e.ghs || 0), 0);
-    if (expGHS > topExpVal) { topExpVal = expGHS; topExpProp = o.name || o.id; }
+    if (expGHS > topExpVal) { topExpVal = expGHS; topExpProp = PROP_NAMES[o.id] || o.name || o.id; }
   });
   set('stat-top-exp',      topExpProp ? fmtGHS(topExpVal) : '—');
   set('stat-top-exp-prop', topExpProp || '—');
@@ -1937,7 +1937,7 @@ async function fetchAI(p, c, period) {
   // If Anthropic key is present, upgrade to AI commentary
   if (!_apiKey) return;
   const _bookings = p.bookings || [];
-  const prompt = `You are a property manager at Wawa Group in Ghana. Write 3 professional sentences of owner statement commentary (plain text, no bullets, no markdown) covering: occupancy, revenue highlights, expense efficiency, and a forward-looking note. Data — Property: ${p.name}, Month: ${period}, Bookings: ${_bookings.length} (${_bookings.reduce((s,b)=>s+(parseInt(b.nights)||1),0)} nights), USD income: ${fmtUSD(c.totalIncUSD)}, GHS income: ${fmtGHS(c.totalIncGHS)}, TWG fees: ${fmtUSD(c.cogsUSD)}, Total expenses: ${fmtGHS(c.expGHS)}, FX rate: ${p.fxRate||11} GHS/USD, Net payout: ${fmtUSD(c.ownerPayout)}. Context: ${_analyseProperty(p, c, period)}`;
+  const prompt = `You are a property manager at Wawa Group in Ghana. Write 3 professional sentences of owner statement commentary (plain text, no bullets, no markdown) covering: occupancy, revenue highlights, expense efficiency, and a forward-looking note. Data — Property: ${PROP_NAMES[p.id]||p.name}, Month: ${period}, Bookings: ${_bookings.length} (${_bookings.reduce((s,b)=>s+(parseInt(b.nights)||1),0)} nights), USD income: ${fmtUSD(c.totalIncUSD)}, GHS income: ${fmtGHS(c.totalIncGHS)}, TWG fees: ${fmtUSD(c.cogsUSD)}, Total expenses: ${fmtGHS(c.expGHS)}, FX rate: ${p.fxRate||11} GHS/USD, Net payout: ${fmtUSD(c.ownerPayout)}. Context: ${_analyseProperty(p, c, period)}`;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -2766,7 +2766,7 @@ function renderAnalytics() {
         const barW = Math.round((c.ownerPayout/maxPay)*100);
         return `<div class="perf-card ${rankClass[i]}">
           <div class="perf-rank">${rankLabels[i]} · #${i+1} by Payout</div>
-          <div class="perf-name">${p.name||p.id}</div>
+          <div class="perf-name">${PROP_NAMES[p.id]||p.name||p.id}</div>
           <div class="perf-val">${fmtUSD(c.ownerPayout)}</div>
           <div class="perf-sub">${(p.bookings||[]).length} bookings · ${occ.occupancy.toFixed(0)}% occ. · ADR ${fmtUSD(occ.adr)}/night</div>
           <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${barW}%;background:${i===0?'var(--gold)':i===1?'#aaa':'#c67c3a'}"></div></div>
@@ -2793,7 +2793,7 @@ function renderAnalytics() {
             const occ = computeOccupancyMetrics(p, pCode);
             const cls = occ.occupancy>=80?'var(--green)':occ.occupancy>=50?'var(--gold)':'var(--red)';
             return `<div style="display:flex;align-items:center;gap:8px">
-              <div style="width:110px;font-size:10px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(p.name||p.id).replace(/^The /,'')}</div>
+              <div style="width:110px;font-size:10px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(PROP_NAMES[p.id]||p.name||p.id).replace(/^The /,'')}</div>
               <div style="flex:1;height:6px;background:var(--paper2);border-radius:3px">
                 <div style="width:${occ.occupancy.toFixed(0)}%;height:6px;background:${cls};border-radius:3px;transition:width .5s"></div>
               </div>
@@ -2809,7 +2809,7 @@ function renderAnalytics() {
           ${[...props].sort((a,b)=>computeOccupancyMetrics(b,pCode).revpan - computeOccupancyMetrics(a,pCode).revpan).map(p => {
             const occ = computeOccupancyMetrics(p, pCode);
             return `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--paper2)">
-              <span style="color:var(--ink2)">${(p.name||p.id).replace(/^The /,'')}</span>
+              <span style="color:var(--ink2)">${(PROP_NAMES[p.id]||p.name||p.id).replace(/^The /,'')}</span>
               <span style="display:flex;gap:12px">
                 <span style="color:var(--green);font-weight:600">RevPAN ${fmtUSD(occ.revpan)}</span>
                 <span style="color:var(--ink3)">ADR ${fmtUSD(occ.adr)}</span>
@@ -2851,7 +2851,7 @@ function renderAnalytics() {
         const diff = c.ghsConvUSD - altConv;
         const diffColor = diff >= 0 ? 'var(--green)' : 'var(--red)';
         return `<div class="fx-card">
-          <div class="fx-prop-name">${p.name||p.id}</div>
+          <div class="fx-prop-name">${PROP_NAMES[p.id]||p.name||p.id}</div>
           <div class="fx-line"><span style="color:var(--ink3)">GHS income</span><span>${fmtGHS(c.totalIncGHS)}</span></div>
           <div class="fx-line"><span style="color:var(--ink3)">GHS expenses</span><span style="color:var(--red)">−${fmtGHS(c.expGHS)}</span></div>
           <div class="fx-line"><span style="color:var(--ink3)">Net GHS</span><span style="font-weight:600">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></div>
@@ -3076,7 +3076,7 @@ function downloadAnnualPDF(pid) {
       </table>`;
   }).join('');
 
-  const propName = (PERIOD_DATA[periodToCode(allPeriods[0])] || []).find(p => p.id === pid)?.name || pid;
+  const propName = PROP_NAMES[pid] || (PERIOD_DATA[periodToCode(allPeriods[0])] || []).find(p => p.id === pid)?.name || pid;
   const avgOcc = allPeriods.length > 0 ? (totOccSum / allPeriods.length).toFixed(1) : '—';
   const w = window.open('', '_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
@@ -3182,7 +3182,7 @@ function _buildPropertyBlock(p, pCode) {
   return `
     <div class="prop-chart-section">
       <div class="prop-chart-header">
-        <span class="prop-chart-name">${p.name||p.id}</span>
+        <span class="prop-chart-name">${PROP_NAMES[p.id]||p.name||p.id}</span>
         <span class="prop-chart-payout">${fmtUSD(c.ownerPayout)} net payout &nbsp;·&nbsp; ${totalBookings} booking${totalBookings!==1?'s':''} &nbsp;·&nbsp; <span class="occ-pill ${occCls}" style="font-size:10px">${occ.occupancy.toFixed(0)}% occ.</span></span>
       </div>
       <div class="prop-chart-body">
