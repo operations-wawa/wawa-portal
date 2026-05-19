@@ -435,6 +435,7 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
         <span id="sync-lbl" style="font-size:11px;color:var(--ink3);white-space:nowrap">—</span>
         <button id="sync-btn" class="btn-logout" onclick="refreshCurrentPeriod()" title="Sync latest data from tracker" style="padding:4px 10px;font-size:11px">↺ Sync</button>
       </div>
+      <div id="fx-rate-display" style="display:none;font-size:11px;color:var(--ink3);white-space:nowrap;padding:3px 8px;background:rgba(0,0,0,.06);border-radius:20px;letter-spacing:.3px"></div>
       <button class="btn-logout" onclick="openSettings()">⚙ Settings</button>
       <button class="btn-logout" onclick="logout()">Sign out</button>
     </div>
@@ -867,6 +868,68 @@ let _autoRefreshTimer  = null;
 let _labelTimer        = null;
 let _lastKnownModified = null;   // ISO timestamp from Apps Script _meta sheet
 const HEARTBEAT_MS = 30 * 1000; // lightweight check every 30 s
+
+// ── Live FX rate (USD → GHS) ──────────────────────────────────────
+let LIVE_FX_RATE = null;
+const FX_CACHE_KEY  = 'wawa_fx_rate';
+const FX_TIME_KEY   = 'wawa_fx_time';
+const FX_TTL_MS     = 12 * 60 * 60 * 1000; // 12 hours
+
+async function fetchLiveFXRate() {
+  // Check localStorage cache first
+  try {
+    const cached = localStorage.getItem(FX_CACHE_KEY);
+    const cachedAt = parseInt(localStorage.getItem(FX_TIME_KEY) || '0', 10);
+    if (cached && (Date.now() - cachedAt) < FX_TTL_MS) {
+      LIVE_FX_RATE = parseFloat(cached);
+      _updateFXDisplay(LIVE_FX_RATE, true);
+      console.info(`[Wawa FX] Using cached rate: 1 USD = ${LIVE_FX_RATE} GHS`);
+      return;
+    }
+  } catch(e) {}
+
+  // Primary: Fawaz Ahmed CDN API (free, daily, no API key)
+  const ENDPOINTS = [
+    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+    'https://latest.currency-api.pages.dev/v1/currencies/usd.json'
+  ];
+
+  for (const url of ENDPOINTS) {
+    try {
+      const res  = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const rate = json?.usd?.ghs;
+      if (!rate || typeof rate !== 'number') continue;
+      const rounded = Math.round(rate * 100) / 100;
+      LIVE_FX_RATE = rounded;
+      localStorage.setItem(FX_CACHE_KEY, String(rounded));
+      localStorage.setItem(FX_TIME_KEY, String(Date.now()));
+      _updateFXDisplay(rounded, false);
+      console.info(`[Wawa FX] Live rate fetched: 1 USD = ${rounded} GHS`);
+      return;
+    } catch(e) {
+      console.warn('[Wawa FX] Endpoint failed:', url, e.message);
+    }
+  }
+
+  // All endpoints failed — use hardcoded fallback
+  console.warn('[Wawa FX] All endpoints failed — using fallback 11 GHS/USD');
+  _updateFXDisplay(null, false);
+}
+
+function _updateFXDisplay(rate, fromCache) {
+  const el = document.getElementById('fx-rate-display');
+  if (!el) return;
+  if (!rate) {
+    el.innerHTML = '<span title="Live rate unavailable">⚠ FX: est. 11 GHS/USD</span>';
+    el.style.opacity = '0.6';
+    return;
+  }
+  const label = fromCache ? `${rate} GHS/USD` : `${rate} GHS/USD ✓`;
+  el.innerHTML = `<span title="${fromCache ? 'Cached (≤12h)' : 'Live rate fetched today'}">1 USD = ${rate} GHS</span>`;
+  el.style.opacity = '1';
+}
 
 function _setSyncUI(state) {
   const wrap = document.getElementById('sync-wrap');
@@ -1311,8 +1374,8 @@ function computeProperty(p) {
   const netUSD = Math.round((totalIncUSD - cogsUSD - expUSD) * 100) / 100;
   const netGHS = Math.round((totalIncGHS - cogsGHS - expGHS) * 100) / 100;
 
-  const fxRate = p.fxRate || 11;
-  if (!p.fxRate) console.warn('[Wawa] Missing fxRate for property', p.id, '— using fallback 11 GHS/USD');
+  const fxRate = p.fxRate || LIVE_FX_RATE || 11;
+  if (!p.fxRate) console.warn('[Wawa] Missing fxRate for property', p.id, `— using ${LIVE_FX_RATE ? 'live' : 'fallback'} ${fxRate} GHS/USD`);
 
   const ghsConvUSD  = Math.round((netGHS / fxRate) * 100) / 100;
   const ownerPayout = Math.round((netUSD + ghsConvUSD) * 100) / 100;
@@ -1339,6 +1402,13 @@ function login() {
   document.getElementById('admin-view').style.display = 'block';
   initPeriods();           // build period dropdown + filter items from PERIOD_LABELS
   renderAdminTable();
+  // Show FX chip and fetch live rate (runs in parallel with data load)
+  const fxEl = document.getElementById('fx-rate-display');
+  if (fxEl) {
+    fxEl.style.display = 'block';
+    fxEl.innerHTML = '<span style="opacity:.5">Fetching FX…</span>';
+  }
+  fetchLiveFXRate();
   const period = periodToCode(DEFAULT_PERIOD);
   loadLiveData(period).then(() => {
     _lastSyncTime = Date.now();
@@ -1353,6 +1423,8 @@ function logout() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('admin-view').style.display = 'none';
   document.getElementById('admin-sub-nav').style.display = 'none';
+  const fxEl = document.getElementById('fx-rate-display');
+  if (fxEl) fxEl.style.display = 'none';
   document.getElementById('analytics-view').style.display = 'none';
   document.getElementById('twg-view').style.display = 'none';
   // reset tab state
