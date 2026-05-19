@@ -2779,7 +2779,7 @@ function renderAnalytics() {
         const occ = computeOccupancyMetrics(bottom, pCode);
         return `<div class="perf-card perf-bad">
           <div class="perf-rank" style="color:var(--red)">Needs Attention · Lowest Payout</div>
-          <div class="perf-name">${bottom.name||bottom.id}</div>
+          <div class="perf-name">${PROP_NAMES[bottom.id]||bottom.name||bottom.id}</div>
           <div class="perf-val red">${fmtUSD(c.ownerPayout)}</div>
           <div class="perf-sub">${(bottom.bookings||[]).length} bookings · ${occ.occupancy.toFixed(0)}% occ. · RevPAN ${fmtUSD(occ.revpan)}</div>
           <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.round((c.ownerPayout/maxPay)*100)}%;background:var(--red)"></div></div>
@@ -2993,7 +2993,7 @@ function renderVarianceAlerts(container, periodLabel, pCode) {
         const up = pct > 0;
         return `<div class="alert-card ${up ? 'up' : 'dn'}">
           <div class="alert-icon">${up ? '▲' : '▼'}</div>
-          <div class="alert-prop">${p.name || p.id}</div>
+          <div class="alert-prop">${PROP_NAMES[p.id] || p.name || p.id}</div>
           <div class="alert-change">${up ? '+' : ''}${pct.toFixed(1)}% MoM</div>
           <div style="font-size:11px;color:var(--ink3);margin-top:2px">
             This: ${fmtUSD(curInc)} &nbsp;·&nbsp; Prev: ${fmtUSD(prevInc)}
