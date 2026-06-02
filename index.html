@@ -2081,7 +2081,8 @@ async function fetchAI(p, c, period) {
   </div>
   <div class="modal-actions">
     <button class="btn-act btn-dark" onclick="downloadPDF()">⬇ Download PDF</button>
-    <button class="btn-act btn-gold" onclick="markSent()">✓ Mark as sent</button>
+    <button class="btn-act btn-gold" onclick="emailStatement('${p.id}', '${_pcode}')">📧 Email Statement</button>
+    <button class="btn-act btn-ghost" onclick="markSent()">✓ Mark as sent</button>
     <button class="btn-act btn-ghost" onclick="downloadAnnualPDF('${p.id}')">📊 Annual Tax Export</button>
     <button class="btn-act btn-ghost" onclick="closeModal()">Close</button>
   </div>
@@ -2324,6 +2325,44 @@ function markSent() {
     auditLog('MARKED_SENT', activeProp.name);
     notify('✅ Marked as sent');
     closeModal();
+  }
+}
+
+// ── EMAIL STATEMENT VIA APPS SCRIPT ───────────────────────────────
+async function emailStatement(pid, period) {
+  if (!pid || !period) { notify('⚠ Missing property or period data'); return; }
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending…';
+  btn.style.opacity = '0.6';
+
+  try {
+    // Call Apps Script with sendOwnerStatement action
+    const res = await fetch(APPS_SCRIPT_URL + `?action=sendOwnerStatement&id=${pid}&period=${period}`);
+    const json = await res.json();
+
+    if (json.ok) {
+      notify(`✅ Email sent to ${json.recipientEmail}`);
+      auditLog('EMAIL_SENT', `${activeProp?.name || pid} · ${period} · ${json.recipientEmail}`);
+      // Mark as sent in UI
+      statuses[pid] = 'sent';
+      renderFilteredTable();
+      // Refresh modal to show updated status
+      if (activeProp && activeProp.id === pid) {
+        setTimeout(() => openStatement(pid, activeProp), 800);
+      }
+    } else {
+      notify(`⚠ Email failed: ${json.error || 'Unknown error'}`);
+      addLog(`EMAIL ERROR: ${json.error}`, 'err');
+    }
+  } catch (e) {
+    notify(`⚠ Email error: ${e.message}`);
+    addLog(`EMAIL EXCEPTION: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📧 Email Statement';
+    btn.style.opacity = '1';
   }
 }
 
