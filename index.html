@@ -515,14 +515,15 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
         </button>
         <div class="filter-popup" id="fp-popup-prop" style="display:none">
           <div class="filter-popup-header">Select Properties</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('chelsea')"><input type="checkbox" data-prop="chelsea" onclick="event.stopPropagation()" onchange="togglePropFilter('chelsea')"> Chelsea Townhouse</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('oasis')"><input type="checkbox" data-prop="oasis" onclick="event.stopPropagation()" onchange="togglePropFilter('oasis')"> Oasis</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('lokko')"><input type="checkbox" data-prop="lokko" onclick="event.stopPropagation()" onchange="togglePropFilter('lokko')"> Lokko Serene</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('broadway')"><input type="checkbox" data-prop="broadway" onclick="event.stopPropagation()" onchange="togglePropFilter('broadway')"> The Broadway</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('mona_lisa')"><input type="checkbox" data-prop="mona_lisa" onclick="event.stopPropagation()" onchange="togglePropFilter('mona_lisa')"> The Mona Lisa</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('eden')"><input type="checkbox" data-prop="eden" onclick="event.stopPropagation()" onchange="togglePropFilter('eden')"> The Eden</div>
-          <div class="filter-popup-item" onclick="togglePropFilter('urban_farmhouse')"><input type="checkbox" data-prop="urban_farmhouse" onclick="event.stopPropagation()" onchange="togglePropFilter('urban_farmhouse')"> The Urban Farmhouse</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('chelsea')"><input type="checkbox" data-prop="chelsea" onclick="event.stopPropagation()" onchange="togglePropFilter('chelsea')"> The Chelsea Townhouse</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('cove')"><input type="checkbox" data-prop="cove" onclick="event.stopPropagation()" onchange="togglePropFilter('cove')"> Cove</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('eden')"><input type="checkbox" data-prop="eden" onclick="event.stopPropagation()" onchange="togglePropFilter('eden')"> Eden</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('lokko')"><input type="checkbox" data-prop="lokko" onclick="event.stopPropagation()" onchange="togglePropFilter('lokko')"> Lokko</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('broadway')"><input type="checkbox" data-prop="broadway" onclick="event.stopPropagation()" onchange="togglePropFilter('broadway')"> Broadway</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('mona_lisa')"><input type="checkbox" data-prop="mona_lisa" onclick="event.stopPropagation()" onchange="togglePropFilter('mona_lisa')"> Mona Lisa</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('oasis')"><input type="checkbox" data-prop="oasis" onclick="event.stopPropagation()" onchange="togglePropFilter('oasis')"> Oasis Retreat</div>
           <div class="filter-popup-item" onclick="togglePropFilter('ocean_heights')"><input type="checkbox" data-prop="ocean_heights" onclick="event.stopPropagation()" onchange="togglePropFilter('ocean_heights')"> Ocean Heights</div>
+          <div class="filter-popup-item" onclick="togglePropFilter('urban_farmhouse')"><input type="checkbox" data-prop="urban_farmhouse" onclick="event.stopPropagation()" onchange="togglePropFilter('urban_farmhouse')"> Urban Farmhouse</div>
           <div class="filter-popup-item" onclick="togglePropFilter('nshornaa')"><input type="checkbox" data-prop="nshornaa" onclick="event.stopPropagation()" onchange="togglePropFilter('nshornaa')"> Nshornaa</div>
           <div class="filter-popup-footer"><button class="filter-clear" onclick="clearPropFilter()">Clear all</button></div>
         </div>
@@ -1200,7 +1201,7 @@ function updateDashboardStats(data, period) {
 // All property data loaded live from Apps Script — no static data
 const PROPERTIES = {};
 const statuses = {};
-const OWNER_IDS = ['chelsea','oasis','lokko','broadway','mona_lisa','eden','urban_farmhouse','ocean_heights','nshornaa'];
+const OWNER_IDS = ['chelsea','cove','eden','lokko','broadway','mona_lisa','oasis','ocean_heights','urban_farmhouse','nshornaa'];
 
 // ── Raw data storage — every API response is cached here for inspection ──
 window.WAWA_RAW = null;
@@ -2291,9 +2292,10 @@ let twgPeriods       = new Set([DEFAULT_PERIOD]);
 let filterProps   = new Set(); // empty = all properties
 
 const PROP_NAMES = {
-  chelsea:'Chelsea Townhouse', oasis:'Oasis', lokko:'Lokko Serene',
-  broadway:'The Broadway', mona_lisa:'The Mona Lisa', eden:'The Eden',
-  urban_farmhouse:'The Urban Farmhouse', ocean_heights:'Ocean Heights', nshornaa:'Nshornaa'
+  chelsea:'The Chelsea Townhouse', oasis:'Oasis Retreat', lokko:'Lokko',
+  broadway:'Broadway', mona_lisa:'Mona Lisa', eden:'Eden',
+  urban_farmhouse:'Urban Farmhouse', ocean_heights:'Ocean Heights', nshornaa:'Nshornaa',
+  cove:'Cove'
 };
 
 // Close any open filter popups when clicking outside
