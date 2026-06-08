@@ -2069,6 +2069,7 @@ async function fetchAI(p, c, period) {
   // Always generate the built-in analysis immediately (no cost, no API)
   const builtInText = _analyseProperty(p, c, period);
   const _apiKey = _getAnthropicKey();
+  const _pcode = periodToCode(period);
 
   strip.innerHTML = `
   <div class="ai-strip">
