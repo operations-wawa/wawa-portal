@@ -3048,30 +3048,31 @@ function renderAnalytics() {
       <div style="height:${Math.max(180, props.length*38)}px"><canvas id="anl-bar-portfolio"></canvas></div>
     </div>
 
-    <!-- ④ FX IMPACT ANALYSIS -->
-    <div class="anl-section-title">FX Impact Analysis — GHS → USD Conversion${propFilterLabel}</div>
-    <div class="fx-cards">
-      ${props.filter(p=>(p.expGHS||computeProperty(p).expGHS)>0||(p.totalIncGHS||computeProperty(p).totalIncGHS)>0).map(p => {
-        const c   = computeProperty(p);
-        const ref = 13; // reference rate for comparison
-        const actual = p.fxRate || 11;
-        const altConv = c.netGHS < 0 ? Math.abs(c.netGHS)/ref*-1 : c.netGHS/ref;
-        const diff = c.ghsConvUSD - altConv;
-        const diffColor = diff >= 0 ? 'var(--green)' : 'var(--red)';
-        return `<div class="fx-card">
-          <div class="fx-prop-name">${PROP_NAMES[p.id]||p.name||p.id}</div>
-          <div class="fx-line"><span style="color:var(--ink3)">GHS income</span><span>${fmtGHS(c.totalIncGHS)}</span></div>
-          <div class="fx-line"><span style="color:var(--ink3)">GHS expenses</span><span style="color:var(--red)">−${fmtGHS(c.expGHS)}</span></div>
-          <div class="fx-line"><span style="color:var(--ink3)">Net GHS</span><span style="font-weight:600">${c.netGHS<0?'−'+fmtGHS(-c.netGHS):fmtGHS(c.netGHS)}</span></div>
-          <div class="fx-line"><span style="color:var(--ink3)">Actual rate</span><span style="font-weight:600">${actual} GHS/USD</span></div>
-          <div class="fx-line"><span style="color:var(--ink3)">Converted</span><span>${fmtUSD(Math.abs(c.ghsConvUSD))}</span></div>
-          <div class="fx-impact-row">
-            <span class="fx-impact-lbl">vs ref. rate (${ref})</span>
-            <span class="fx-impact-val" style="color:${diffColor}">${diff>=0?'+':''}${fmtUSD(diff)}</span>
-          </div>
+    <!-- ④ FX EXPOSURE (one-line portfolio summary) -->
+    ${(() => {
+      const totGHSIn  = props.reduce((s,p) => s + computeProperty(p).totalIncGHS, 0);
+      const totGHSOut = props.reduce((s,p) => s + computeProperty(p).expGHS, 0);
+      if (totGHSIn === 0 && totGHSOut === 0) return '';
+      const netGHS  = totGHSIn - totGHSOut;
+      const avgRate = props.reduce((s,p) => s + (parseFloat(p.fxRate)||11), 0) / props.length;
+      const stmtUSD = netGHS / avgRate;
+      const live    = typeof LIVE_FX_RATE === 'number' && LIVE_FX_RATE > 0 ? LIVE_FX_RATE : null;
+      const drift   = live ? (netGHS / live) - stmtUSD : null;
+      const driftCell = drift === null ? '' : `
+        <div class="ytd-cell"><div class="ytd-lbl">At Today's Rate (${live.toFixed(2)})</div>
+          <div class="ytd-val" style="color:${drift >= 0 ? 'var(--green)' : 'var(--red)'}">${drift >= 0 ? '+' : ''}${fmtUSD(drift)}</div>
+          <div class="ytd-sub">vs statement rate ${avgRate.toFixed(2)}</div></div>`;
+      return `
+        <div class="anl-section-title">GHS Exposure — ${periodLabel}${propFilterLabel}</div>
+        <div class="ytd-strip" style="margin-bottom:20px">
+          <div class="ytd-cell"><div class="ytd-lbl">GHS Inflow</div><div class="ytd-val">${fmtGHS(totGHSIn)}</div><div class="ytd-sub">Local-currency income</div></div>
+          <div class="ytd-cell"><div class="ytd-lbl">GHS Outflow</div><div class="ytd-val">${fmtGHS(totGHSOut)}</div><div class="ytd-sub">Local-currency expenses</div></div>
+          <div class="ytd-cell"><div class="ytd-lbl">Net GHS Position</div>
+            <div class="ytd-val" style="color:${netGHS >= 0 ? 'var(--green)' : 'var(--red)'}">${netGHS < 0 ? '−' + fmtGHS(-netGHS) : fmtGHS(netGHS)}</div>
+            <div class="ytd-sub">${fmtUSD(Math.abs(stmtUSD))} at statement rate</div></div>
+          ${driftCell}
         </div>`;
-      }).join('')}
-    </div>
+    })()}
 
     <!-- ⑤ PER-PROPERTY BREAKDOWN -->
     <div class="anl-section-title">Per-Property Booking &amp; Expense Detail — ${periodLabel}${propFilterLabel}</div>
