@@ -446,6 +446,7 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
     <button class="view-tab on" id="tab-statements" onclick="showAdminTab('statements')">Statements</button>
     <button class="view-tab" id="tab-analytics" onclick="showAdminTab('analytics')">Analytics</button>
     <button class="view-tab" id="tab-twg" onclick="showAdminTab('twg')">TWG Earnings</button>
+    <button class="view-tab" id="tab-forecast" onclick="showAdminTab('forecast')">Forecast</button>
   </div>
 
   <!-- ADMIN -->
@@ -777,6 +778,57 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- FORECAST VIEW -->
+  <div id="forecast-view" style="display:none;padding:36px 40px;max-width:1400px;margin:0 auto;">
+    <div class="page-title">Booking <span style="color:var(--gold)">Forecast</span></div>
+    <div class="page-desc">Forward-looking view — pacing for the current month, open nights you can still fill, and confirmed revenue for the months ahead.</div>
+
+    <!-- FORECAST KPI STRIP -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0 28px;">
+      <div style="background:var(--nv3);border:1px solid var(--br);border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:6px;">Confirmed Forward Revenue</div>
+        <div style="font-size:22px;font-weight:700;color:var(--gd);" id="fc-forward-rev">—</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px;" id="fc-forward-rev-sub">stays from today onward</div>
+      </div>
+      <div style="background:var(--nv3);border:1px solid var(--br);border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:6px;">Open Nights This Month</div>
+        <div style="font-size:22px;font-weight:700;color:var(--ink);" id="fc-open-nights">—</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px;" id="fc-open-nights-sub">across the portfolio</div>
+      </div>
+      <div style="background:var(--nv3);border:1px solid var(--br);border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:6px;">Revenue Opportunity</div>
+        <div style="font-size:22px;font-weight:700;color:var(--gr);" id="fc-opportunity">—</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px;">open nights × current rates</div>
+      </div>
+      <div style="background:var(--nv3);border:1px solid var(--br);border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:6px;">Properties At Risk</div>
+        <div style="font-size:22px;font-weight:700;color:var(--rd);" id="fc-at-risk">—</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px;">pacing below 50% occupancy</div>
+      </div>
+    </div>
+
+    <!-- UPCOMING CHECK-INS -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;padding:24px;margin-bottom:28px;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;">🛬 Check-ins — Next 7 Days</div>
+      <div id="fc-checkins" style="display:flex;flex-direction:column;gap:8px;font-size:12px;"></div>
+    </div>
+
+    <!-- MONTH PACING + CALENDAR -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-bottom:28px;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:700;color:var(--ink)" id="fc-pacing-title">Current Month Pacing</div>
+        <div style="font-size:11px;color:var(--ink3)" id="fc-pacing-sub"></div>
+      </div>
+      <div id="fc-pacing-body" style="padding:16px 24px;"></div>
+    </div>
+
+    <!-- NEXT MONTHS OUTLOOK -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;padding:24px;">
+      <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;" id="fc-outlook-title">Months Ahead</div>
+      <div id="fc-outlook-body"></div>
     </div>
   </div>
 
@@ -1514,10 +1566,12 @@ function logout() {
   if (fxEl) fxEl.style.display = 'none';
   document.getElementById('analytics-view').style.display = 'none';
   document.getElementById('twg-view').style.display = 'none';
+  document.getElementById('forecast-view').style.display = 'none';
   // reset tab state
   document.getElementById('tab-statements').classList.add('on');
   document.getElementById('tab-analytics').classList.remove('on');
   document.getElementById('tab-twg').classList.remove('on');
+  document.getElementById('tab-forecast').classList.remove('on');
   // reset all global data state so re-login starts fresh
   Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
   Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
@@ -2784,11 +2838,14 @@ function showAdminTab(tab) {
   document.getElementById('tab-statements').classList.toggle('on', tab === 'statements');
   document.getElementById('tab-analytics').classList.toggle('on', tab === 'analytics');
   document.getElementById('tab-twg').classList.toggle('on', tab === 'twg');
+  document.getElementById('tab-forecast').classList.toggle('on', tab === 'forecast');
   document.getElementById('admin-view').style.display      = tab === 'statements' ? 'block' : 'none';
   document.getElementById('analytics-view').style.display  = tab === 'analytics'  ? 'block' : 'none';
   document.getElementById('twg-view').style.display        = tab === 'twg'         ? 'block' : 'none';
+  document.getElementById('forecast-view').style.display   = tab === 'forecast'    ? 'block' : 'none';
   if (tab === 'analytics') renderAnalytics();
   if (tab === 'twg')       renderTWGEarnings();
+  if (tab === 'forecast')  renderForecast();
 }
 
 function _destroyChart(id) {
@@ -3709,6 +3766,230 @@ function renderTWGEarnings() {
         }
       }
     });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FORECAST TAB — forward-looking pacing, calendar gaps & outlook
+// ═══════════════════════════════════════════════════════════════════
+const _MONTH_NAMES = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
+
+function _addMonthsToCode(code, n) {
+  const [y, m] = code.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function _codeToLabel(code) {
+  const [y, m] = code.split('-').map(Number);
+  return _MONTH_NAMES[m - 1] + ' ' + y;
+}
+// Parse a booking's check-in Date from stayDates like "03 June - 08 June".
+// Falls back to rawDate month if the day can't be parsed. Returns null if unknown.
+function _stayStartDate(b, code) {
+  const str = b.stayDates || b.displayDate || b.dates || '';
+  const m = String(str).match(/(\d{1,2})\s+([A-Za-z]+)/);
+  const year = parseInt(code.split('-')[0]);
+  if (m) {
+    const monIdx = _MONTH_NAMES.findIndex(n => n.toLowerCase().startsWith(m[2].toLowerCase().slice(0,3)));
+    if (monIdx >= 0) {
+      let y = year;
+      // Dec stay listed in a Jan period (or vice versa) — pick nearest year
+      const perMon = parseInt(code.split('-')[1]) - 1;
+      if (perMon === 0 && monIdx === 11) y = year - 1;
+      if (perMon === 11 && monIdx === 0) y = year + 1;
+      return new Date(y, monIdx, parseInt(m[1]));
+    }
+  }
+  return null;
+}
+function _bookingNightsCount(b) {
+  return parseInt(b.nights) || parseNights(b.stayDates) || parseNights(b.dates) || 1;
+}
+function _bookingRevUSD(b, fxRate) {
+  return _bookingUSD(b) + (_bookingGHS(b) / (fxRate || 11));
+}
+
+async function _ensureCodesLoaded(codes) {
+  for (const code of codes) {
+    if (PERIOD_DATA[code]) continue;
+    try {
+      const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${code}`);
+      const json = await res.json();
+      if (json.ok) PERIOD_DATA[code] = json.data;
+    } catch(e) { addLog(`Forecast: could not load ${code}: ` + e.message, 'err'); }
+  }
+}
+
+async function renderForecast() {
+  const body = document.getElementById('fc-pacing-body');
+  if (body && !body.innerHTML) body.innerHTML = '<div style="color:var(--tx3);font-size:12px;padding:12px 0">Loading forecast data…</div>';
+
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const curCode = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+  const prevCode  = _addMonthsToCode(curCode, -1);
+  const next1Code = _addMonthsToCode(curCode, 1);
+  const next2Code = _addMonthsToCode(curCode, 2);
+  await _ensureCodesLoaded([prevCode, curCode, next1Code, next2Code]);
+
+  const curProps  = PERIOD_DATA[curCode]  || [];
+  const prevProps = PERIOD_DATA[prevCode] || [];
+  const daysInMonth = getDaysInPeriod(curCode);
+  const todayDay  = today.getDate();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  // ── Per-property current-month model ─────────────────────────────
+  const rows = curProps.map(p => {
+    const fx = parseFloat(p.fxRate) || LIVE_FX_RATE || 11;
+    const bookings = (p.bookings || []);
+    // dayCover[d] = how many bookings cover night d (handles multi-unit properties)
+    const dayCover = new Array(daysInMonth + 1).fill(0);
+    let nightsBooked = 0, revUSD = 0, fwdRevUSD = 0;
+    const markStay = (start, nights) => {
+      for (let i = 0; i < nights; i++) {
+        const d = new Date(start); d.setDate(d.getDate() + i);
+        if (d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth())
+          dayCover[d.getDate()]++;
+      }
+    };
+    bookings.forEach(b => {
+      const n = _bookingNightsCount(b);
+      nightsBooked += n;
+      revUSD += _bookingRevUSD(b, fx);
+      const start = _stayStartDate(b, curCode);
+      if (start) {
+        markStay(start, n);
+        if (start >= today) fwdRevUSD += _bookingRevUSD(b, fx);
+      }
+    });
+    // Stays from last month that spill into this month
+    (prevProps.find(x => x.id === p.id)?.bookings || []).forEach(b => {
+      const start = _stayStartDate(b, prevCode);
+      if (start) markStay(start, _bookingNightsCount(b));
+    });
+    const occ = Math.min(100, Math.round((nightsBooked / daysInMonth) * 100));
+    const openNights = Math.max(0, daysInMonth - nightsBooked);
+    const adr = nightsBooked > 0 ? revUSD / nightsBooked : 0;
+    return { id: p.id, name: PROP_NAMES[p.id] || p.name || p.id, fx,
+             bookings, nightsBooked, revUSD, fwdRevUSD, occ, openNights, adr, dayCover };
+  });
+
+  // Portfolio blended ADR as fallback for properties with no bookings yet
+  const totNights = rows.reduce((s,r) => s + r.nightsBooked, 0);
+  const totRev    = rows.reduce((s,r) => s + r.revUSD, 0);
+  const portADR   = totNights > 0 ? totRev / totNights : 0;
+
+  // ── KPI strip ─────────────────────────────────────────────────────
+  const futureMonthsRev = [next1Code, next2Code].reduce((s, code) =>
+    s + (PERIOD_DATA[code] || []).reduce((s2, p) => {
+      const fx = parseFloat(p.fxRate) || 11;
+      return s2 + (p.bookings || []).reduce((s3, b) => s3 + _bookingRevUSD(b, fx), 0);
+    }, 0), 0);
+  const fwdRev = rows.reduce((s,r) => s + r.fwdRevUSD, 0) + futureMonthsRev;
+  const openTotal = rows.reduce((s,r) => s + r.openNights, 0);
+  const oppTotal  = rows.reduce((s,r) => s + r.openNights * (r.adr || portADR), 0);
+  const atRisk    = rows.filter(r => r.occ < 50);
+
+  set('fc-forward-rev', fmtUSD(fwdRev));
+  set('fc-forward-rev-sub', `incl. ${_codeToLabel(next1Code).split(' ')[0]} & ${_codeToLabel(next2Code).split(' ')[0]} confirmed`);
+  set('fc-open-nights', openTotal);
+  set('fc-open-nights-sub', `${daysInMonth - todayDay + 1} days left in ${_codeToLabel(curCode).split(' ')[0]}`);
+  set('fc-opportunity', fmtUSD(oppTotal));
+  set('fc-at-risk', atRisk.length);
+
+  // ── Upcoming check-ins (next 7 days) ──────────────────────────────
+  const horizon = new Date(today); horizon.setDate(horizon.getDate() + 7);
+  const checkins = [];
+  [[curCode, curProps], [next1Code, PERIOD_DATA[next1Code] || []]].forEach(([code, props]) => {
+    props.forEach(p => (p.bookings || []).forEach(b => {
+      const start = _stayStartDate(b, code);
+      if (start && start >= today && start < horizon) {
+        checkins.push({ start, prop: PROP_NAMES[p.id] || p.name || p.id, b,
+                        rev: _bookingRevUSD(b, parseFloat(p.fxRate) || 11) });
+      }
+    }));
+  });
+  checkins.sort((a, b) => a.start - b.start);
+  const ciEl = document.getElementById('fc-checkins');
+  if (ciEl) {
+    ciEl.innerHTML = checkins.length === 0
+      ? '<div style="color:var(--tx3)">No check-ins scheduled in the next 7 days.</div>'
+      : checkins.map(c => {
+          const dLabel = c.start.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+          const isToday = c.start.getTime() === today.getTime();
+          return `<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--nv3);border:1px solid var(--br);border-radius:8px;">
+            <span style="min-width:86px;font-weight:700;color:${isToday ? 'var(--gd)' : 'var(--ink)'}">${isToday ? 'TODAY' : dLabel}</span>
+            <span style="font-weight:600;color:var(--ink)">${c.prop}</span>
+            <span style="color:var(--tx2)">${c.b.guest || '—'}</span>
+            <span style="color:var(--tx3)">· ${_bookingNightsCount(c.b)} night${_bookingNightsCount(c.b) !== 1 ? 's' : ''} · ${c.b.platform || ''}</span>
+            <span style="margin-left:auto;font-weight:700;color:var(--gr)">${fmtUSD(c.rev)}</span>
+          </div>`;
+        }).join('');
+  }
+
+  // ── Pacing rows with calendar strips ──────────────────────────────
+  set('fc-pacing-title', `${_codeToLabel(curCode)} Pacing — day ${todayDay} of ${daysInMonth}`);
+  set('fc-pacing-sub', 'sorted worst-first · squares are calendar nights');
+  rows.sort((a, b) => a.occ - b.occ);
+  if (body) body.innerHTML = rows.map(r => {
+    const status = r.occ >= 80 ? ['ON TRACK', 'var(--gr)'] : r.occ >= 50 ? ['MONITOR', 'var(--gd)'] : ['AT RISK', 'var(--rd)'];
+    const oppUSD = r.openNights * (r.adr || portADR);
+    const cells = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cover = r.dayCover[d];
+      const isPast = d < todayDay;
+      let bg, title;
+      if (cover > 0)      { bg = cover > 1 ? '#7a5c1e' : 'var(--gd)'; title = `${d}: booked${cover > 1 ? ' ×' + cover : ''}`; }
+      else if (isPast)    { bg = 'var(--br)'; title = `${d}: unsold (past)`; }
+      else                { bg = 'rgba(224,112,112,.35)'; title = `${d}: OPEN`; }
+      cells.push(`<span title="${title}" style="width:11px;height:11px;border-radius:2px;background:${bg};display:inline-block;${d === todayDay ? 'outline:2px solid var(--ink);outline-offset:1px;' : ''}"></span>`);
+    }
+    return `<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--br);flex-wrap:wrap;">
+      <div style="min-width:150px;">
+        <div style="font-weight:700;color:var(--ink);font-size:12px">${r.name}</div>
+        <div style="font-size:10px;color:var(--tx3)">${r.nightsBooked} nights · ${r.bookings.length} bookings</div>
+      </div>
+      <div style="min-width:64px;text-align:center;">
+        <div style="font-weight:700;font-size:15px;color:${status[1]}">${r.occ}%</div>
+        <div style="font-size:8px;font-weight:700;letter-spacing:.5px;color:${status[1]}">${status[0]}</div>
+      </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap;flex:1;min-width:280px;">${cells.join('')}</div>
+      <div style="min-width:130px;text-align:right;font-size:11px;color:var(--tx2)">
+        ${r.openNights > 0 ? `${r.openNights} open · <span style="color:var(--gr);font-weight:700">${fmtUSD(oppUSD)}</span> potential` : '<span style="color:var(--gr);font-weight:700">Fully booked</span>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Months-ahead outlook ──────────────────────────────────────────
+  set('fc-outlook-title', `Confirmed Bookings — ${_codeToLabel(next1Code)} & ${_codeToLabel(next2Code)}`);
+  const outEl = document.getElementById('fc-outlook-body');
+  if (outEl) {
+    const monthBlock = (code) => {
+      const props = PERIOD_DATA[code] || [];
+      const rows2 = props.map(p => {
+        const fx = parseFloat(p.fxRate) || 11;
+        const bks = p.bookings || [];
+        const nights = bks.reduce((s,b) => s + _bookingNightsCount(b), 0);
+        const rev = bks.reduce((s,b) => s + _bookingRevUSD(b, fx), 0);
+        return { name: PROP_NAMES[p.id] || p.name || p.id, n: bks.length, nights, rev };
+      }).filter(r => r.n > 0).sort((a,b) => b.rev - a.rev);
+      const totalRev = rows2.reduce((s,r) => s + r.rev, 0);
+      const days = getDaysInPeriod(code);
+      return `<div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;">${_codeToLabel(code)}</div>
+        ${rows2.length === 0
+          ? `<div style="font-size:12px;color:var(--tx3);padding:8px 0">No bookings on the books yet — every night is open inventory.</div>`
+          : rows2.map(r => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--br);font-size:12px;">
+              <span style="color:var(--ink);font-weight:600">${r.name}</span>
+              <span style="color:var(--tx3)">${r.n} bkg · ${r.nights}/${days} nights</span>
+              <span style="font-weight:700;color:var(--gr)">${fmtUSD(r.rev)}</span>
+            </div>`).join('') +
+            `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12px;font-weight:700;">
+              <span>TOTAL CONFIRMED</span><span style="color:var(--gd)">${fmtUSD(totalRev)}</span>
+            </div>`}
+      </div>`;
+    };
+    outEl.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">${monthBlock(next1Code)}${monthBlock(next2Code)}</div>`;
   }
 }
 
