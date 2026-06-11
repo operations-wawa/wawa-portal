@@ -1179,7 +1179,7 @@ function getDaysInPeriod(periodCode) {
 function computeOccupancyMetrics(p, periodCode) {
   const bookings    = p.bookings || [];
   const totalNights = bookings.reduce((s, b) =>
-    s + (b.nights || parseNights(b.stayDates) || parseNights(b.dates) || 1), 0);
+    s + (parseInt(b.nights) || parseNights(b.stayDates) || parseNights(b.dates) || 1), 0);
   const availNights = getDaysInPeriod(periodCode);
   const totalUSD    = bookings.reduce((s, b) => s + _bookingUSD(b), 0);
   const totalGHS    = bookings.reduce((s, b) => s + _bookingGHS(b), 0);
@@ -1953,8 +1953,9 @@ function _analyseProperty(p, c, period) {
   const totalRevUSD = c.totalIncUSD + (c.totalIncGHS / fxRate);
 
   // ── 4. Occupancy ──────────────────────────────────────────────────
+  // computeOccupancyMetrics returns `occupancy` already on a 0–100 scale
   const occ    = computeOccupancyMetrics(p, periodToCode(period));
-  const occPct = Math.round((occ.occupancyRate || 0) * 100);
+  const occPct = Math.round(occ.occupancy || 0);
 
   // ── 5. Platform mix ───────────────────────────────────────────────
   const platCount = {};
@@ -1981,7 +1982,16 @@ function _analyseProperty(p, c, period) {
   let sentA = '';
   // TWG target: 80% occupancy
   const occDesc = occPct >= 80 ? 'strong' : occPct >= 50 ? 'moderate' : 'below-target';
-  sentA = `${propName} achieved ${occDesc} occupancy of ${occPct}% in ${period}, with ${bookings.length} booking${bookings.length !== 1 ? 's' : ''} totalling ${totalNights} night${totalNights !== 1 ? 's' : ''}.`;
+  sentA = `${propName} achieved ${occDesc} occupancy of ${occPct}% in ${period}, selling ${occ.totalNights} of ${occ.availNights} available nights across ${bookings.length} booking${bookings.length !== 1 ? 's' : ''}.`;
+  // Month-on-month occupancy movement (only when meaningful)
+  if (prevProp) {
+    const prevOcc = Math.round(computeOccupancyMetrics(prevProp, prevCode).occupancy || 0);
+    if (prevOcc > 0 && Math.abs(occPct - prevOcc) >= 5) {
+      sentA += occPct > prevOcc
+        ? ` Occupancy improved from ${prevOcc}% in ${prevLabel}.`
+        : ` Occupancy eased from ${prevOcc}% in ${prevLabel}.`;
+    }
+  }
 
   // Sentence B — Revenue: streams + ADR + combined total
   let sentB = '';
@@ -1990,8 +2000,10 @@ function _analyseProperty(p, c, period) {
     revParts.push(`${fmtUSD(c.totalIncUSD)} from ${usdBks.length} international booking${usdBks.length !== 1 ? 's' : ''}${adrUSD > 0 ? ` (avg. ${fmtUSD(adrUSD)}/night)` : ''}`);
   if (ghsBks.length > 0)
     revParts.push(`${fmtGHS(c.totalIncGHS)} from ${ghsBks.length} local booking${ghsBks.length !== 1 ? 's' : ''}${adrGHS > 0 ? ` (avg. ${fmtGHS(Math.round(adrGHS))}/night)` : ''}`);
-  if (revParts.length > 0) {
+  if (revParts.length === 2) {
     sentB = `Revenue comprised ${revParts.join(' and ')}, totalling ${fmtUSD(totalRevUSD)} on a combined USD-equivalent basis at ${fxRate} GHS/USD.`;
+  } else if (revParts.length === 1) {
+    sentB = `Revenue comprised ${revParts[0]}.`;
   }
 
   // Sentence C — Channel mix
@@ -2055,8 +2067,19 @@ function _analyseProperty(p, c, period) {
     sentF = `The net owner position for ${period} is ${fmtUSD(payout)} — USD income of ${fmtUSD(c.totalIncUSD)} was offset by a negative GHS position of ${fmtGHS(Math.abs(c.totalIncGHS - c.expGHS))} after expenses, resulting in a carry-over balance.`;
   }
 
+  // Sentence G — occupancy opportunity (only when below the 80% target)
+  let sentG = '';
+  if (occPct > 0 && occPct < 80 && totalNights > 0 && totalRevUSD > 0) {
+    const targetNights = Math.ceil(occ.availNights * 0.8);
+    const gapNights    = targetNights - occ.totalNights;
+    if (gapNights > 0) {
+      const blendedADR = totalRevUSD / totalNights;
+      sentG = `Closing the gap to the 80% occupancy target (${gapNights} more night${gapNights !== 1 ? 's' : ''}) at the current blended rate of ${fmtUSD(blendedADR)}/night represents a potential ${fmtUSD(gapNights * blendedADR)} in additional monthly revenue.`;
+    }
+  }
+
   // ── Assemble: group into coherent paragraphs ──────────────────────
-  const parts = [sentA, sentB, sentC, sentD, sentE, sentF].filter(Boolean);
+  const parts = [sentA, sentB, sentC, sentD, sentE, sentF, sentG].filter(Boolean);
   return parts.join(' ');
 }
 
