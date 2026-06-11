@@ -2952,6 +2952,9 @@ function renderAnalytics() {
       <span style="margin-left:auto;color:var(--ink3);font-size:10px">Matches Statements filter</span>
     </div>` : ''}
 
+    <!-- ⓪ NEEDS ACTION THIS WEEK (unified alert list) -->
+    <div id="action-list-mount"></div>
+
     <!-- ① YTD SUMMARY STRIP -->
     <div class="anl-section-title">Year-to-Date Summary (${ytdPeriods} periods loaded)</div>
     <div class="ytd-strip">
@@ -2962,8 +2965,6 @@ function renderAnalytics() {
       <div class="ytd-cell"><div class="ytd-lbl">Est. Avg Occupancy</div><div class="ytd-val">${ytdAvgOcc}%</div><div class="ytd-sub">Portfolio average</div></div>
     </div>
 
-    <!-- ① b VARIANCE ALERTS MOUNT -->
-    <div id="variance-alerts-mount"></div>
 
     <!-- ② PERFORMER CARDS -->
     <div class="anl-section-title">Performance Rankings — ${periodLabel}${propFilterLabel}</div>
@@ -3079,9 +3080,9 @@ function renderAnalytics() {
     ${props.map(p => _buildPropertyBlock(p, pCode)).join('')}
   `;
 
-  // ── Variance Alerts ──
-  const _varMount = document.getElementById('variance-alerts-mount');
-  if (_varMount) renderVarianceAlerts(_varMount, periodLabel, pCode);
+  // ── Needs Action This Week (unified alerts) ──
+  const _actMount = document.getElementById('action-list-mount');
+  if (_actMount) renderActionList(_actMount, periodLabel, pCode);
 
   // ── Render charts (setTimeout ensures canvas has computed dimensions) ──
   setTimeout(() => {
@@ -3161,54 +3162,127 @@ function _mkBar(id, labels, datasets) {
 }
 
 // ── VARIANCE ALERTS ──────────────────────────────────────────────
-function renderVarianceAlerts(container, periodLabel, pCode) {
-  const sortedPeriods = PERIOD_LABELS.slice();
-  const primaryIdx = sortedPeriods.findIndex(l => periodToCode(l) === pCode);
-  const prevLabel = sortedPeriods[primaryIdx + 1];
+// ── NEEDS ACTION THIS WEEK ───────────────────────────────────────
+// Unified action list: merges the anomaly checks, downside revenue
+// variance, and current-month pacing gaps (forecast logic), each
+// priced in USD and ranked by money at stake.
+function _collectActionItems(pCode, label) {
+  const props = PERIOD_DATA[pCode] || Object.values(PROPERTIES).filter(p => p && p.id);
+  const items = [];
+  const idx       = PERIOD_LABELS.findIndex(l => periodToCode(l) === pCode);
+  const prevLabel = idx >= 0 ? PERIOD_LABELS[idx + 1] : null;
   const prevCode  = prevLabel ? periodToCode(prevLabel) : null;
-  const currData  = PERIOD_DATA[pCode] || Object.values(PROPERTIES).filter(p => p && p.id);
   const prevData  = prevCode ? PERIOD_DATA[prevCode] : null;
 
-  if (!prevData) {
-    container.innerHTML += `<div class="anl-section-title">⚡ Variance Alerts — ${periodLabel}</div>
-      <div style="padding:14px 18px;background:var(--paper2);border-radius:var(--r);font-size:12px;color:var(--ink3);margin-bottom:20px;">
-        Load more periods to see MoM variance
-      </div>`;
-    return;
-  }
+  // Portfolio blended ADR — used to price estimates
+  let totN = 0, totR = 0;
+  props.forEach(p => {
+    const c   = computeProperty(_applyOverrides(p, pCode));
+    const occ = computeOccupancyMetrics(p, pCode);
+    const fx  = parseFloat(p.fxRate) || 11;
+    totN += occ.totalNights;
+    totR += c.totalIncUSD + c.totalIncGHS / fx;
+  });
+  const portADR = totN > 0 ? totR / totN : 0;
 
-  const alerts = [];
-  currData.forEach(p => {
-    const curInc = p.totalIncUSD || 0;
-    const prevProp = prevData.find(q => q.id === p.id);
-    if (!prevProp) return;
-    const prevInc = prevProp.totalIncUSD || 0;
-    if (prevInc === 0) return;
-    const pct = ((curInc - prevInc) / prevInc) * 100;
-    if (Math.abs(pct) >= 20) alerts.push({ p, curInc, prevInc, pct });
+  props.forEach(p => {
+    const c    = computeProperty(_applyOverrides(p, pCode));
+    const occ  = computeOccupancyMetrics(p, pCode);
+    const fx   = parseFloat(p.fxRate) || 11;
+    const name = PROP_NAMES[p.id] || p.name || p.id;
+    const bkgs = p.bookings || [];
+    const hasRev = bkgs.some(b => _bookingUSD(b) > 0 || _bookingGHS(b) > 0);
+
+    // Missing revenue — blocks the statement
+    if (bkgs.length > 0 && !hasRev) {
+      const est = occ.totalNights * portADR;
+      items.push({ pid: p.id, sev: 'error', stake: est, title: 'Missing revenue', actionLabel: 'Enter Revenue',
+        msg: `<b>${name}</b> — ${bkgs.length} booking${bkgs.length > 1 ? 's' : ''} with no revenue entered${est > 0 ? ' (~' + fmtUSD(est) + ' est. at portfolio rate)' : ''}. Blocks the owner statement.` });
+    }
+    // Negative net payout
+    if (c.ownerPayout < 0) {
+      items.push({ pid: p.id, sev: 'error', stake: Math.abs(c.ownerPayout), title: 'Negative payout', actionLabel: 'Review',
+        msg: `<b>${name}</b> — net payout ${fmtUSD(c.ownerPayout)}; expenses exceed combined income.` });
+    }
+    // No bookings at all
+    if (bkgs.length === 0) {
+      items.push({ pid: p.id, sev: 'warn', stake: occ.availNights * portADR, title: 'No bookings', actionLabel: 'View',
+        msg: `<b>${name}</b> — no bookings recorded for ${label}.` });
+    }
+    // Prior-month comparisons
+    if (prevData) {
+      const pp = prevData.find(x => x.id === p.id);
+      if (pp) {
+        const pc = computeProperty(_applyOverrides(pp, prevCode));
+        // Expense spike >30%
+        if (pc.expGHS > 0 && c.expGHS > pc.expGHS * 1.3) {
+          items.push({ pid: p.id, sev: 'warn', stake: (c.expGHS - pc.expGHS) / fx, title: 'Expense spike', actionLabel: 'Review',
+            msg: `<b>${name}</b> — expenses up ${Math.round(((c.expGHS - pc.expGHS) / pc.expGHS) * 100)}% vs ${prevLabel} (${fmtGHS(pc.expGHS)} → ${fmtGHS(c.expGHS)}).` });
+        }
+        // Revenue drop ≥20% (only when current revenue is actually entered)
+        const prevComb = pc.totalIncUSD + pc.totalIncGHS / fx;
+        const curComb  = c.totalIncUSD + c.totalIncGHS / fx;
+        if (prevComb > 0 && bkgs.length > 0 && hasRev && curComb < prevComb * 0.8) {
+          items.push({ pid: p.id, sev: 'warn', stake: prevComb - curComb, title: 'Revenue drop', actionLabel: 'View',
+            msg: `<b>${name}</b> — revenue down ${Math.round((1 - curComb / prevComb) * 100)}% vs ${prevLabel} (${fmtUSD(prevComb)} → ${fmtUSD(curComb)}).` });
+        }
+      }
+    }
   });
 
-  if (alerts.length === 0) {
-    container.innerHTML += `<div class="anl-section-title">⚡ Variance Alerts — ${periodLabel}</div>
+  // Current-month pacing below the 80% target (forecast feed) —
+  // always measured against the real calendar month, whatever period is selected
+  const now = new Date();
+  const curCode = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const curMonthName = _MONTH_NAMES[now.getMonth()];
+  (PERIOD_DATA[curCode] || []).forEach(p => {
+    // skip zero-booking properties already flagged above when viewing the current month
+    if ((p.bookings || []).length === 0 && pCode === curCode) return;
+    const occ = computeOccupancyMetrics(p, curCode);
+    if (occ.occupancy >= 80) return;
+    const c  = computeProperty(_applyOverrides(p, curCode));
+    const fx = parseFloat(p.fxRate) || 11;
+    const name = PROP_NAMES[p.id] || p.name || p.id;
+    const gapNights = Math.max(0, Math.ceil(occ.availNights * 0.8) - occ.totalNights);
+    if (gapNights === 0) return;
+    const adr = occ.totalNights > 0 ? (c.totalIncUSD + c.totalIncGHS / fx) / occ.totalNights : portADR;
+    items.push({ pid: p.id, sev: 'warn', stake: gapNights * (adr || 0), title: 'Pacing below target',
+      actionLabel: 'Forecast', action: "showAdminTab('forecast')",
+      msg: `<b>${name}</b> — ${curMonthName} pacing at ${occ.occupancy.toFixed(0)}% occupancy; ${gapNights} more night${gapNights !== 1 ? 's' : ''} needed to hit the 80% target.` });
+  });
+
+  items.sort((a, b) => b.stake - a.stake);
+  return items;
+}
+
+function renderActionList(container, periodLabel, pCode) {
+  const items = _collectActionItems(pCode, periodLabel);
+  if (items.length === 0) {
+    container.innerHTML = `<div class="anl-section-title">✅ Needs Action This Week</div>
       <div style="padding:14px 18px;background:var(--paper2);border-radius:var(--r);font-size:12px;color:var(--ink3);margin-bottom:20px;">
-        No significant variance detected (all properties within ±20%)
+        All clear — no data issues, expense spikes or pacing risks detected.
       </div>`;
     return;
   }
-
-  container.innerHTML += `<div class="anl-section-title">⚡ Variance Alerts — ${periodLabel}</div>
-    <div class="alert-grid">
-      ${alerts.map(({ p, curInc, prevInc, pct }) => {
-        const up = pct > 0;
-        return `<div class="alert-card ${up ? 'up' : 'dn'}">
-          <div class="alert-icon">${up ? '▲' : '▼'}</div>
-          <div class="alert-prop">${PROP_NAMES[p.id] || p.name || p.id}</div>
-          <div class="alert-change">${up ? '+' : ''}${pct.toFixed(1)}% MoM</div>
-          <div style="font-size:11px;color:var(--ink3);margin-top:2px">
-            This: ${fmtUSD(curInc)} &nbsp;·&nbsp; Prev: ${fmtUSD(prevInc)}
+  const sevColor = { error: 'var(--red)', warn: 'var(--gold)' };
+  container.innerHTML = `
+    <div class="anl-section-title">🎯 Needs Action This Week
+      <span style="font-weight:400;color:var(--ink3)">· ${items.length} item${items.length > 1 ? 's' : ''} · ranked by money at stake</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+      ${items.map((it, i) => `
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--nv);border:1px solid var(--br);border-left:3px solid ${sevColor[it.sev] || 'var(--br)'};border-radius:8px;">
+          <span style="font-size:11px;font-weight:700;color:var(--tx3);min-width:18px;">${i + 1}</span>
+          <div style="flex:1;font-size:12px;color:var(--tx);">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${sevColor[it.sev]};margin-right:8px;">${it.title}</span>
+            ${it.msg}
           </div>
-        </div>`;
-      }).join('')}
+          <div style="text-align:right;min-width:90px;">
+            <div style="font-weight:700;font-size:14px;color:${sevColor[it.sev]}">${it.stake > 0 ? fmtUSD(it.stake) : '—'}</div>
+            <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px">at stake</div>
+          </div>
+          <button class="alert-action-btn" onclick="${it.action || `openStatement('${it.pid}')`}">${it.actionLabel || 'Open Statement'}</button>
+        </div>`).join('')}
     </div>`;
 }
 
