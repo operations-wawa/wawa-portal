@@ -1034,8 +1034,8 @@ async function refreshCurrentPeriod(silent) {
   const label  = selEl ? selEl.value : DEFAULT_PERIOD;
   const code   = periodToCode(label);
   _setSyncUI('syncing');
-  // Bust cache for this period so loadLiveData fetches fresh data
-  delete PERIOD_DATA[code];
+  // Bust cache for all periods so Forecast (prev/cur/next1/next2) also rerenders fresh
+  Object.keys(PERIOD_DATA).forEach(k => delete PERIOD_DATA[k]);
   Object.keys(PROPERTIES).forEach(k => delete PROPERTIES[k]);
   try {
     await loadLiveData(code);
