@@ -3766,8 +3766,20 @@ async function renderForecast() {
     const occ = Math.min(100, Math.round((nightsBooked / daysInMonth) * 100));
     const openNights = Math.max(0, daysInMonth - nightsBooked);
     const adr = nightsBooked > 0 ? revUSD / nightsBooked : 0;
+    // Lead time: days between booking creation and check-in (staging bookings only)
+    const leadTimes = [];
+    bookings.forEach(b => {
+      if (!b.bookingDate) return;
+      const checkin = _stayStartDate(b, curCode);
+      const booked  = new Date(b.bookingDate);
+      if (checkin && !isNaN(booked)) {
+        const days = Math.round((checkin - booked) / 86400000);
+        if (days >= 0 && days < 730) leadTimes.push(days);
+      }
+    });
+    const avgLeadDays = leadTimes.length > 0 ? Math.round(leadTimes.reduce((s,d) => s+d, 0) / leadTimes.length) : null;
     return { id: p.id, name: PROP_NAMES[p.id] || p.name || p.id, fx,
-             bookings, nightsBooked, revUSD, fwdRevUSD, occ, openNights, adr, dayCover };
+             bookings, nightsBooked, revUSD, fwdRevUSD, occ, openNights, adr, avgLeadDays, dayCover };
   });
 
   // Portfolio blended ADR as fallback for properties with no bookings yet
@@ -3843,7 +3855,8 @@ async function renderForecast() {
     return `<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--br);flex-wrap:wrap;">
       <div style="min-width:150px;">
         <div style="font-weight:700;color:var(--ink);font-size:12px">${r.name}</div>
-        <div style="font-size:10px;color:var(--tx3)">${r.nightsBooked} nights · ${r.bookings.length} bookings</div>
+        <div style="font-size:10px;color:var(--tx3)">${r.nightsBooked} nights · ${r.bookings.length} bookings${r.adr > 0 ? ' · ADR ' + fmtUSD(r.adr) : ''}</div>
+        ${r.avgLeadDays !== null ? `<div style="font-size:9px;color:var(--tx3);margin-top:1px;letter-spacing:.2px">booked ${r.avgLeadDays}d out avg</div>` : ''}
       </div>
       <div style="min-width:64px;text-align:center;">
         <div style="font-weight:700;font-size:15px;color:${status[1]}">${r.occ}%</div>
