@@ -2465,6 +2465,12 @@ const PROP_NAMES = {
   cove:'Cove'
 };
 
+// Fixed monthly fees (non-percentage income from boutique hotels division etc.)
+// Add or update entries here as agreements change.
+const FIXED_FEES = [
+  { name: 'Casa Soya', division: 'Boutique Hotels', usdPerMonth: 1500 }
+];
+
 // Close any open filter popups when clicking outside
 document.addEventListener('click', e => {
   ['period','prop','anl-period','twg-period'].forEach(which => {
@@ -3608,16 +3614,19 @@ function renderTWGEarnings() {
     totBookings += r.bookings;
   });
   const avgFX = rows.reduce((s,r) => s + r.fxRate, 0) / rows.length;
-  const totTWGEquivUSD = totTWGUSD + (totTWGGHS / avgFX);
+  // Fixed fees — scale by number of selected months
+  const numMonths = sortedPeriods.length || 1;
+  const fixedFeeTotal = FIXED_FEES.reduce((s, f) => s + f.usdPerMonth * numMonths, 0);
+  const totTWGEquivUSD = totTWGUSD + (totTWGGHS / avgFX) + fixedFeeTotal;
   const totRevEquivUSD = totUSDRev + (totGHSRev / avgFX);
-  const blendedPct = totRevEquivUSD > 0 ? Math.round((totTWGEquivUSD / totRevEquivUSD) * 100) : 0;
+  const blendedPct = totRevEquivUSD > 0 ? Math.round(((totTWGEquivUSD - fixedFeeTotal) / totRevEquivUSD) * 100) : 0;
 
   // ── KPI CARDS ──────────────────────────────────────────────────
   set('twg-total-combined', fmtUSD(totTWGEquivUSD));
-  set('twg-total-pct', blendedPct + '% blended fee rate');
+  set('twg-total-pct', blendedPct + '% mgmt fee rate' + (fixedFeeTotal > 0 ? ' + ' + fmtUSD(fixedFeeTotal) + ' fixed' : ''));
   set('twg-income-usd', fmtUSD(totTWGUSD));
   set('twg-income-ghs', fmtGHS(totTWGGHS));
-  set('twg-avg-per-booking', totBookings > 0 ? fmtUSD(totTWGEquivUSD / totBookings) : '$0.00');
+  set('twg-avg-per-booking', totBookings > 0 ? fmtUSD((totTWGEquivUSD - fixedFeeTotal) / totBookings) : '$0.00');
   set('twg-bookings-count', 'across ' + totBookings + ' fee-earning bookings');
 
   // ── RANKING (by TWG fee income) ────────────────────────────────
@@ -3650,12 +3659,39 @@ function renderTWGEarnings() {
     </tr>`;
   }).join('');
 
+  // Append fixed-fee rows (styled with a subtle badge to distinguish from % fees)
+  const fixedRows = FIXED_FEES.map(f => {
+    const total = f.usdPerMonth * numMonths;
+    const share = totTWGEquivUSD > 0 ? Math.round((total / totTWGEquivUSD) * 100) : 0;
+    return `<tr style="border-bottom:1px solid var(--br);background:rgba(0,0,0,.015)">
+      <td style="padding:10px 16px;font-weight:600;color:var(--ink)">
+        ${f.name}
+        <span style="margin-left:6px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;background:var(--blue);color:#fff;border-radius:3px;padding:1px 5px;">${f.division}</span>
+      </td>
+      <td style="padding:10px 16px;text-align:right;color:var(--tx3)">—</td>
+      <td style="padding:10px 16px;text-align:right;color:var(--tx3);font-size:10px;">${fmtUSD(f.usdPerMonth)}/mo</td>
+      <td style="padding:10px 16px;text-align:right;color:var(--gd);font-weight:600">${fmtUSD(total)}</td>
+      <td style="padding:10px 16px;text-align:right;color:var(--tx3)">—</td>
+      <td style="padding:10px 16px;text-align:right;color:var(--gd);font-weight:700">${fmtUSD(total)}</td>
+      <td style="padding:10px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+          <div style="width:90px;height:5px;background:var(--br);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${share}%;background:var(--blue);"></div></div>
+          <span style="min-width:32px;text-align:right;font-weight:600;color:var(--ink)">${share}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  if (tb && fixedRows) tb.innerHTML += fixedRows;
+
   const tf = document.getElementById('twg-tfoot');
+  const totalLabel = FIXED_FEES.length > 0
+    ? `TOTAL — ${rows.length} properties + ${FIXED_FEES.length} fixed`
+    : `TOTAL — ${rows.length} properties`;
   if (tf) tf.innerHTML = `<tr style="background:var(--nv2);font-weight:700;border-top:2px solid var(--br2)">
-    <td style="padding:12px 16px">TOTAL — ${rows.length} properties</td>
+    <td style="padding:12px 16px">${totalLabel}</td>
     <td style="padding:12px 16px;text-align:right">${totBookings}</td>
     <td style="padding:12px 16px;text-align:right">${blendedPct}%</td>
-    <td style="padding:12px 16px;text-align:right;color:var(--gd)">${fmtUSD(totTWGUSD)}</td>
+    <td style="padding:12px 16px;text-align:right;color:var(--gd)">${fmtUSD(totTWGUSD + fixedFeeTotal)}</td>
     <td style="padding:12px 16px;text-align:right">${fmtGHS(totTWGGHS)}</td>
     <td style="padding:12px 16px;text-align:right;color:var(--gd)">${fmtUSD(totTWGEquivUSD)}</td>
     <td style="padding:12px 16px;text-align:right;color:var(--gd)">100%</td>
@@ -3664,14 +3700,16 @@ function renderTWGEarnings() {
   // ── TREND CHART (TWG fee income, last 6 months) ────────────────
   _destroyChart('twg-trend-chart');
   const trendLabels = PERIOD_LABELS.slice(0,6).reverse();
+  const monthlyFixedTotal = FIXED_FEES.reduce((s, f) => s + f.usdPerMonth, 0);
   const trendValues = trendLabels.map(label => {
     const code  = periodToCode(label);
     const props = PERIOD_DATA[code] || [];
-    return props.reduce((s, p) => {
+    const propFees = props.reduce((s, p) => {
       const c = computeProperty(_applyOverrides(p, code));
       const fx = parseFloat(p.fxRate)||11;
       return s + c.cogsUSD + (c.cogsGHS / fx);
     }, 0);
+    return propFees + monthlyFixedTotal;
   });
   const ctx = document.getElementById('twg-trend-chart');
   if (ctx && typeof Chart !== 'undefined') {
