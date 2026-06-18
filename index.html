@@ -758,6 +758,42 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
       <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;" id="fc-outlook-title">Months Ahead</div>
       <div id="fc-outlook-body"></div>
     </div>
+
+    <!-- PERFORMANCE METRICS TABLE -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-top:28px;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">Performance Metrics</div>
+        <div style="font-size:11px;color:var(--ink3)">RevPAR · platform mix · expense ratio</div>
+      </div>
+      <div id="fc-metrics-body" style="padding:16px 24px;"></div>
+    </div>
+
+    <!-- 90-DAY ROLLING PACING -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-top:28px;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);">
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">Rolling 90-Day Pacing</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:2px">occupancy across the last 30 days and next 60</div>
+      </div>
+      <div id="fc-rolling-body" style="padding:16px 24px;"></div>
+    </div>
+
+    <!-- TURNOVER DENSITY -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-top:28px;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);">
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">Turnover Density</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:2px">days with simultaneous check-outs + check-ins — hardest days for cleaning teams</div>
+      </div>
+      <div id="fc-turnover-body" style="padding:16px 24px;"></div>
+    </div>
+
+    <!-- OWNER PAYOUT SCHEDULE -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-top:28px;margin-bottom:0;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);">
+        <div style="font-size:14px;font-weight:700;color:var(--ink)">Forward Payout Schedule</div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:2px">projected revenue from confirmed future bookings, by property</div>
+      </div>
+      <div id="fc-payout-body" style="padding:16px 24px;"></div>
+    </div>
   </div>
 
   <!-- AUDIT LOG VIEW -->
@@ -3778,8 +3814,27 @@ async function renderForecast() {
       }
     });
     const avgLeadDays = leadTimes.length > 0 ? Math.round(leadTimes.reduce((s,d) => s+d, 0) / leadTimes.length) : null;
+    // Gap nights: single open nights sandwiched between booked nights
+    let gapNights = 0;
+    for (let d = 2; d < daysInMonth; d++) {
+      if (dayCover[d] === 0 && dayCover[d-1] > 0 && dayCover[d+1] > 0) gapNights++;
+    }
+    // RevPAR
+    const revPAR = adr * (occ / 100);
+    // Expense ratio (total operating expenses as % of gross revenue)
+    const expUSD = (p.expenses||[]).reduce((s,e) => s + (_expenseUSD ? _expenseUSD(e) : 0), 0);
+    const expGHS = (p.expenses||[]).reduce((s,e) => s + (_expenseGHS ? _expenseGHS(e) : 0), 0);
+    const totalExpUSD = expUSD + expGHS / (fx || 11);
+    const expRatio = revUSD > 0 ? Math.round(totalExpUSD / revUSD * 100) : null;
+    // Platform mix (revenue by channel)
+    const platMap = {};
+    bookings.forEach(b => {
+      const ch = (b.platform||'Unknown').trim().replace(/\.com.*|\.co\..*/i,'');
+      platMap[ch] = (platMap[ch]||0) + _bookingRevUSD(b, fx);
+    });
     return { id: p.id, name: PROP_NAMES[p.id] || p.name || p.id, fx,
-             bookings, nightsBooked, revUSD, fwdRevUSD, occ, openNights, adr, avgLeadDays, dayCover };
+             bookings, nightsBooked, revUSD, fwdRevUSD, occ, openNights, adr, avgLeadDays, dayCover,
+             gapNights, revPAR, expRatio, platMap };
   });
 
   // Portfolio blended ADR as fallback for properties with no bookings yet
@@ -3855,7 +3910,7 @@ async function renderForecast() {
     return `<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--br);flex-wrap:wrap;">
       <div style="min-width:150px;">
         <div style="font-weight:700;color:var(--ink);font-size:12px">${r.name}</div>
-        <div style="font-size:10px;color:var(--tx3)">${r.nightsBooked} nights · ${r.bookings.length} bookings${r.adr > 0 ? ' · ADR ' + fmtUSD(r.adr) : ''}</div>
+        <div style="font-size:10px;color:var(--tx3)">${r.nightsBooked} nights · ${r.bookings.length} bookings${r.adr > 0 ? ' · ADR ' + fmtUSD(r.adr) : ''}${r.gapNights > 0 ? ' · <span style="color:var(--rd)">' + r.gapNights + ' gap' + (r.gapNights !== 1 ? 's' : '') + '</span>' : ''}</div>
         ${r.avgLeadDays !== null ? `<div style="font-size:9px;color:var(--tx3);margin-top:1px;letter-spacing:.2px">booked ${r.avgLeadDays}d out avg</div>` : ''}
       </div>
       <div style="min-width:64px;text-align:center;">
@@ -3865,6 +3920,7 @@ async function renderForecast() {
       <div style="display:flex;gap:2px;flex-wrap:wrap;flex:1;min-width:280px;">${cells.join('')}</div>
       <div style="min-width:130px;text-align:right;font-size:11px;color:var(--tx2)">
         ${r.openNights > 0 ? `${r.openNights} open · <span style="color:var(--gr);font-weight:700">${fmtUSD(oppUSD)}</span> potential` : '<span style="color:var(--gr);font-weight:700">Fully booked</span>'}
+        <div style="font-size:9px;color:var(--tx3);margin-top:2px">RevPAR ${fmtUSD(r.revPAR)}${r.expRatio !== null ? ' · exp ' + r.expRatio + '%' : ''}</div>
       </div>
     </div>`;
   }).join('');
@@ -3900,6 +3956,233 @@ async function renderForecast() {
     };
     outEl.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">${monthBlock(next1Code)}${monthBlock(next2Code)}</div>`;
   }
+
+  // ── New insight sections ──────────────────────────────────────────
+  _renderFcMetrics(rows, portADR);
+  _renderFcRolling(prevCode, curCode, next1Code, next2Code, todayDay, daysInMonth);
+  _renderFcTurnover(rows, daysInMonth, todayDay);
+  _renderFcPayout(next1Code, next2Code, today);
+}
+
+function _renderFcMetrics(rows, portADR) {
+  const el = document.getElementById('fc-metrics-body');
+  if (!el) return;
+  // Portfolio platform mix
+  const portPlat = {};
+  let portRev = 0;
+  rows.forEach(r => {
+    Object.entries(r.platMap||{}).forEach(([ch, rev]) => {
+      portPlat[ch] = (portPlat[ch]||0) + rev;
+      portRev += rev;
+    });
+  });
+  const platSorted = Object.entries(portPlat).sort((a,b) => b[1]-a[1]);
+  const platColors = ['var(--gd)','var(--blue)','var(--gr)','var(--rd)','var(--tx3)'];
+
+  const platBar = platSorted.map(([ch,rev],i) => {
+    const pct = portRev > 0 ? (rev/portRev*100).toFixed(1) : 0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:11px;">
+      <div style="width:10px;height:10px;border-radius:2px;background:${platColors[i]||'var(--tx3)'};flex-shrink:0;"></div>
+      <div style="min-width:90px;color:var(--ink)">${ch}</div>
+      <div style="flex:1;background:var(--br);border-radius:3px;height:6px;">
+        <div style="width:${pct}%;background:${platColors[i]||'var(--tx3)'};height:6px;border-radius:3px;"></div>
+      </div>
+      <div style="min-width:40px;text-align:right;color:var(--tx2)">${pct}%</div>
+      <div style="min-width:70px;text-align:right;color:var(--tx3)">${fmtUSD(rev)}</div>
+    </div>`;
+  }).join('');
+
+  // Per-property table
+  const propRows = rows.filter(r => r.nightsBooked > 0).map(r => {
+    const targetRevPAR = r.adr * 0.80;
+    const revPARPct = targetRevPAR > 0 ? Math.round(r.revPAR / targetRevPAR * 100) : null;
+    const topPlat = Object.entries(r.platMap||{}).sort((a,b)=>b[1]-a[1])[0];
+    return `<tr style="border-bottom:1px solid var(--br);">
+      <td style="padding:8px 10px;font-size:11px;font-weight:600;color:var(--ink)">${r.name}</td>
+      <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--ink)">${fmtUSD(r.revPAR)}</td>
+      <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--tx2)">${fmtUSD(r.adr * 0.80)}</td>
+      <td style="padding:8px 10px;font-size:11px;text-align:right;color:${revPARPct!==null?(revPARPct>=80?'var(--gr)':revPARPct>=50?'var(--gd)':'var(--rd)'):'var(--tx3)'}">${revPARPct!==null?revPARPct+'%':'—'}</td>
+      <td style="padding:8px 10px;font-size:11px;text-align:right;color:${r.gapNights>0?'var(--rd)':'var(--gr)'}">${r.gapNights > 0 ? r.gapNights : '✓ none'}</td>
+      <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--tx2)">${topPlat ? topPlat[0] : '—'}</td>
+      <td style="padding:8px 10px;font-size:11px;text-align:right;color:${r.expRatio!==null?(r.expRatio<30?'var(--gr)':r.expRatio<60?'var(--gd)':'var(--rd)'):'var(--tx3)'}">${r.expRatio !== null ? r.expRatio+'%' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;">Platform Mix — Revenue Share</div>
+        ${platBar || '<div style="color:var(--tx3);font-size:11px;">No revenue data yet</div>'}
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;">RevPAR vs 80% Target</div>
+        ${rows.filter(r=>r.nightsBooked>0).map(r => {
+          const pct = Math.min(100, r.adr > 0 ? Math.round(r.revPAR / (r.adr*0.80) * 100) : 0);
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:10px;">
+            <div style="min-width:90px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name.split(' ')[0]}</div>
+            <div style="flex:1;background:var(--br);border-radius:3px;height:8px;position:relative;">
+              <div style="width:${pct}%;background:${pct>=80?'var(--gr)':pct>=50?'var(--gd)':'var(--rd)'};height:8px;border-radius:3px;"></div>
+              <div style="position:absolute;left:80%;top:-1px;width:1px;height:10px;background:var(--ink);opacity:.3;"></div>
+            </div>
+            <div style="min-width:32px;text-align:right;color:var(--tx2)">${pct}%</div>
+          </div>`;
+        }).join('') || '<div style="color:var(--tx3);font-size:11px;">No data</div>'}
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="border-bottom:2px solid var(--br);">
+        <th style="padding:6px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Property</th>
+        <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">RevPAR</th>
+        <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Target @80%</th>
+        <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">vs Target</th>
+        <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Gap Nights</th>
+        <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Top Channel</th>
+        <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Exp Ratio</th>
+      </tr></thead>
+      <tbody>${propRows || '<tr><td colspan="7" style="padding:16px 10px;color:var(--tx3);font-size:11px;">No bookings yet this month</td></tr>'}</tbody>
+    </table>`;
+}
+
+function _renderFcRolling(prevCode, curCode, next1Code, next2Code, todayDay, daysInMonth) {
+  const el = document.getElementById('fc-rolling-body');
+  if (!el) return;
+  const months = [prevCode, curCode, next1Code, next2Code];
+  const labels  = months.map(c => _codeToLabel(c).substring(0,3));
+
+  // Collect all unique property names across all months
+  const allProps = new Set();
+  months.forEach(code => (PERIOD_DATA[code]||[]).forEach(p => allProps.add(PROP_NAMES[p.id]||p.name||p.id)));
+
+  const rows90 = Array.from(allProps).sort().map(propName => {
+    const cells = months.map((code, mi) => {
+      const props = PERIOD_DATA[code] || [];
+      const p = props.find(x => (PROP_NAMES[x.id]||x.name||x.id) === propName);
+      if (!p) return '<td style="padding:6px 8px;text-align:center;"><span style="color:var(--tx3);font-size:9px;">—</span></td>';
+      const bks = p.bookings||[];
+      const days = getDaysInPeriod(code);
+      const nights = bks.reduce((s,b) => s + _bookingNightsCount(b), 0);
+      const occ = Math.min(100, Math.round(nights/days*100));
+      const col = occ>=80?'var(--gr)':occ>=50?'var(--gd)':'var(--rd)';
+      const isCur = code === curCode;
+      return `<td style="padding:6px 8px;text-align:center;${isCur?'background:rgba(0,0,0,.04);':''}" title="${propName} ${_codeToLabel(code)}: ${occ}% (${nights}/${days} nights)">
+        <div style="font-size:11px;font-weight:${isCur?'700':'400'};color:${col}">${occ}%</div>
+        <div style="font-size:9px;color:var(--tx3)">${nights}n</div>
+      </td>`;
+    }).join('');
+    return `<tr style="border-bottom:1px solid var(--br);">
+      <td style="padding:6px 10px;font-size:11px;font-weight:600;color:var(--ink);min-width:130px;">${propName}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+    <thead><tr style="border-bottom:2px solid var(--br);">
+      <th style="padding:6px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Property</th>
+      ${months.map((c,i) => `<th style="padding:6px 8px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${c===curCode?'var(--gd)':'var(--tx3)'};">${labels[i]}${c===curCode?' ◀':''}</th>`).join('')}
+    </tr></thead>
+    <tbody>${rows90||'<tr><td colspan="5" style="padding:16px;color:var(--tx3);font-size:11px;">Loading…</td></tr>'}</tbody>
+  </table>`;
+}
+
+function _renderFcTurnover(rows, daysInMonth, todayDay) {
+  const el = document.getElementById('fc-turnover-body');
+  if (!el) return;
+
+  // turnoverCount[d] = number of properties with a turnover event on day d
+  const coCount = new Array(daysInMonth + 2).fill(0); // check-outs
+  const ciCount = new Array(daysInMonth + 2).fill(0); // check-ins
+  rows.forEach(r => {
+    for (let d = 1; d <= daysInMonth + 1; d++) {
+      const prev = d > 1 ? (r.dayCover[d-1]||0) : 0;
+      const cur  = d <= daysInMonth ? (r.dayCover[d]||0) : 0;
+      if (prev > 0 && cur === 0) coCount[d]++;  // check-out on day d
+      if (cur  > 0 && prev === 0) ciCount[d]++;  // check-in on day d
+    }
+  });
+
+  const cells = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const co = coCount[d], ci = ciCount[d];
+    const total = co + ci;
+    const isPast = d < todayDay;
+    const isToday = d === todayDay;
+    const intensity = total === 0 ? 0 : Math.min(1, total / 6);
+    const bg = total === 0 ? 'var(--br)' : `rgba(212,88,88,${0.2 + intensity * 0.7})`;
+    const textCol = total > 3 ? '#fff' : 'var(--ink)';
+    cells.push(`<div title="Day ${d}: ${co} check-out${co!==1?'s':''}, ${ci} check-in${ci!==1?'s':''}" style="
+      width:36px;height:36px;border-radius:5px;background:${isPast&&total===0?'transparent':bg};
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      border:${isToday?'2px solid var(--ink)':'1px solid var(--br)'};
+      cursor:default;opacity:${isPast?'.5':'1'};
+    ">
+      <div style="font-size:9px;color:${isPast&&total===0?'var(--tx3)':textCol};font-weight:${isToday?'700':'400'}">${d}</div>
+      ${total > 0 ? `<div style="font-size:8px;font-weight:700;color:${textCol}">${total}</div>` : ''}
+    </div>`);
+  }
+
+  const busyDays = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (coCount[d] + ciCount[d] >= 3) busyDays.push(`Day ${d} (${coCount[d]} out, ${ciCount[d]} in)`);
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">${cells.join('')}</div>
+    <div style="font-size:10px;color:var(--tx3);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <span>Number = total check-outs + check-ins that day across all properties.</span>
+      ${busyDays.length > 0 ? '<span style="color:var(--rd);font-weight:600;">Busy: '+busyDays.join(' · ')+'</span>' : '<span style="color:var(--gr)">No high-density turnover days this month.</span>'}
+    </div>`;
+}
+
+function _renderFcPayout(next1Code, next2Code, today) {
+  const el = document.getElementById('fc-payout-body');
+  if (!el) return;
+
+  const payoutRows = [];
+  [next1Code, next2Code].forEach(code => {
+    (PERIOD_DATA[code]||[]).forEach(p => {
+      const fx = parseFloat(p.fxRate)||11;
+      const propName = PROP_NAMES[p.id]||p.name||p.id;
+      const bks = (p.bookings||[]).filter(b => {
+        const s = _stayStartDate(b, code);
+        return s && s >= today;
+      });
+      if (bks.length === 0) return;
+      const nights = bks.reduce((s,b) => s + _bookingNightsCount(b), 0);
+      const rev = bks.reduce((s,b) => s + _bookingRevUSD(b, fx), 0);
+      payoutRows.push({ propName, code, bks: bks.length, nights, rev });
+    });
+  });
+  payoutRows.sort((a,b) => b.rev - a.rev);
+
+  const total = payoutRows.reduce((s,r) => s + r.rev, 0);
+
+  if (payoutRows.length === 0) {
+    el.innerHTML = '<div style="color:var(--tx3);font-size:11px;padding:8px 0;">No confirmed future bookings yet. This section populates as reservations are made for upcoming months.</div>';
+    return;
+  }
+
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+    <thead><tr style="border-bottom:2px solid var(--br);">
+      <th style="padding:6px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Property</th>
+      <th style="padding:6px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Month</th>
+      <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Bookings</th>
+      <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Nights</th>
+      <th style="padding:6px 10px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);">Projected Rev (USD)</th>
+    </tr></thead>
+    <tbody>
+      ${payoutRows.map(r => `<tr style="border-bottom:1px solid var(--br);">
+        <td style="padding:8px 10px;font-size:11px;font-weight:600;color:var(--ink)">${r.propName}</td>
+        <td style="padding:8px 10px;font-size:11px;color:var(--tx2)">${_codeToLabel(r.code)}</td>
+        <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--tx2)">${r.bks}</td>
+        <td style="padding:8px 10px;font-size:11px;text-align:right;color:var(--tx2)">${r.nights}</td>
+        <td style="padding:8px 10px;font-size:11px;text-align:right;font-weight:700;color:var(--gr)">${fmtUSD(r.rev)}</td>
+      </tr>`).join('')}
+      <tr style="border-top:2px solid var(--br);">
+        <td colspan="4" style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--ink)">Total Forward Revenue</td>
+        <td style="padding:8px 10px;font-size:13px;font-weight:700;text-align:right;color:var(--gr)">${fmtUSD(total)}</td>
+      </tr>
+    </tbody>
+  </table>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
