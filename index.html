@@ -455,6 +455,7 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
     <button class="view-tab" id="tab-analytics" onclick="showAdminTab('analytics')">Analytics</button>
     <button class="view-tab" id="tab-twg" onclick="showAdminTab('twg')">TWG Earnings</button>
     <button class="view-tab" id="tab-forecast" onclick="showAdminTab('forecast')">Forecast</button>
+    <button class="view-tab" id="tab-maintenance" onclick="showAdminTab('maintenance')">Maintenance</button>
   </div>
 
   <!-- ADMIN -->
@@ -859,6 +860,82 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
 
   <!-- AUDIT LOG VIEW -->
   <div id="audit-view"></div>
+
+  <!-- MAINTENANCE DASHBOARD VIEW -->
+  <div id="maintenance-view" style="display:none;padding:36px 40px;max-width:1400px;margin:0 auto;">
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem">
+      <div style="background:var(--bg2);border-radius:8px;padding:1rem">
+        <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">Total open</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)">17</p>
+        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">across 5 units</p>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:1rem">
+        <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">High priority</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:#c0392b">3</p>
+        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">Level 1 &amp; 2 active</p>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:1rem">
+        <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">Avg days open</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)">84</p>
+        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">oldest: 121 days</p>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:1rem">
+        <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">Tracked spend</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)">GHS 35.6K</p>
+        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">resolved items only</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem">
+      <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;padding:1rem 1.25rem">
+        <p style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin:0 0 12px">Open issues by unit</p>
+        <div style="position:relative;width:100%;height:170px"><canvas id="m-unitChart"></canvas></div>
+      </div>
+      <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;padding:1rem 1.25rem">
+        <p style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">Issues by priority</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:12px;color:var(--tx3)">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E24B4A;display:inline-block"></span>L1 Emergency</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#EF9F27;display:inline-block"></span>L2 Urgent</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;display:inline-block"></span>L3 Standard</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#888780;display:inline-block"></span>L4 Cosmetic</span>
+        </div>
+        <div style="position:relative;width:100%;height:130px"><canvas id="m-priorityChart"></canvas></div>
+      </div>
+    </div>
+
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-bottom:1.5rem">
+      <div style="padding:10px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--br)">
+        <span style="font-size:13px;color:var(--tx3)">Filter:</span>
+        <select id="m-unitFilter" onchange="mFilterTable()" style="font-size:13px;padding:4px 10px;border:1px solid var(--br);border-radius:6px;background:var(--bg2);color:var(--tx);font-family:'Lato',sans-serif">
+          <option value="">All units</option>
+          <option>Chelsea A</option><option>Chelsea B</option><option>Chelsea C</option>
+          <option>Lokko 1BR</option><option>Lokko 2BR</option>
+        </select>
+        <select id="m-priFilter" onchange="mFilterTable()" style="font-size:13px;padding:4px 10px;border:1px solid var(--br);border-radius:6px;background:var(--bg2);color:var(--tx);font-family:'Lato',sans-serif">
+          <option value="">All priorities</option>
+          <option value="L1">L1 Emergency</option>
+          <option value="L2">L2 Urgent</option>
+          <option value="L3">L3 Standard</option>
+          <option value="L4">L4 Cosmetic</option>
+        </select>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">
+        <thead>
+          <tr style="background:var(--bg2)">
+            <th style="text-align:left;padding:9px 14px;color:var(--tx3);font-weight:600;font-size:12px;width:15%">Unit</th>
+            <th style="text-align:left;padding:9px 14px;color:var(--tx3);font-weight:600;font-size:12px;width:19%">Category</th>
+            <th style="text-align:left;padding:9px 14px;color:var(--tx3);font-weight:600;font-size:12px;width:13%">Priority</th>
+            <th style="text-align:left;padding:9px 14px;color:var(--tx3);font-weight:600;font-size:12px;width:35%">Description</th>
+            <th style="text-align:left;padding:9px 14px;color:var(--tx3);font-weight:600;font-size:12px;width:10%">Status</th>
+            <th style="text-align:left;padding:9px 14px;color:var(--tx3);font-weight:600;font-size:12px;width:8%">Days</th>
+          </tr>
+        </thead>
+        <tbody id="m-issuesBody"></tbody>
+      </table>
+    </div>
+
+  </div>
 </div>
 
 <!-- ── SETTINGS MODAL ── -->
@@ -2877,14 +2954,96 @@ function showAdminTab(tab) {
   document.getElementById('tab-analytics').classList.toggle('on', tab === 'analytics');
   document.getElementById('tab-twg').classList.toggle('on', tab === 'twg');
   document.getElementById('tab-forecast').classList.toggle('on', tab === 'forecast');
-  document.getElementById('admin-view').style.display      = tab === 'statements' ? 'block' : 'none';
-  document.getElementById('analytics-view').style.display  = tab === 'analytics'  ? 'block' : 'none';
-  document.getElementById('twg-view').style.display        = tab === 'twg'         ? 'block' : 'none';
-  document.getElementById('forecast-view').style.display   = tab === 'forecast'    ? 'block' : 'none';
-  if (tab === 'analytics') renderAnalytics();
-  if (tab === 'twg')       renderTWGEarnings();
-  if (tab === 'forecast')  renderForecast();
+  document.getElementById('tab-maintenance').classList.toggle('on', tab === 'maintenance');
+  document.getElementById('admin-view').style.display        = tab === 'statements'  ? 'block' : 'none';
+  document.getElementById('analytics-view').style.display    = tab === 'analytics'   ? 'block' : 'none';
+  document.getElementById('twg-view').style.display          = tab === 'twg'          ? 'block' : 'none';
+  document.getElementById('forecast-view').style.display     = tab === 'forecast'     ? 'block' : 'none';
+  document.getElementById('maintenance-view').style.display  = tab === 'maintenance'  ? 'block' : 'none';
+  if (tab === 'analytics')    renderAnalytics();
+  if (tab === 'twg')          renderTWGEarnings();
+  if (tab === 'forecast')     renderForecast();
+  if (tab === 'maintenance')  renderMaintenance();
 }
+
+// ── MAINTENANCE DASHBOARD ──────────────────────────────────────────────────
+const _mIssues = [
+  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'L3', desc:'Cockroaches and geckos',                  status:'New',              days:121},
+  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'L4', desc:'Garden is messy',                         status:'In Progress',       days:121},
+  {unit:'Lokko 2BR',    cat:'Electrical / Lighting', pri:'L1', desc:'ECG Bill',                                status:'New',              days:121},
+  {unit:'Lokko 2BR',    cat:'General Maintenance',   pri:'L3', desc:'Paint peeling off',                       status:'New',              days:109},
+  {unit:'Chelsea B',    cat:'Plumbing',              pri:'L3', desc:'Bathroom sewer smell — septic tank',      status:'New',              days:106},
+  {unit:'Chelsea B',    cat:'General Maintenance',   pri:'L4', desc:'Outside wall paint stained',              status:'New',              days:106},
+  {unit:'Chelsea B',    cat:'Plumbing',              pri:'L2', desc:'Septic tank has no ventilation',          status:'New',              days:106},
+  {unit:'Chelsea C',    cat:'General Maintenance',   pri:'L4', desc:'Outside wall stained with black dirt',    status:'New',              days:106},
+  {unit:'Chelsea A',    cat:'Furniture / Decor',     pri:'L3', desc:'Outside wall dirty',                      status:'New',              days:106},
+  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'',   desc:'Bathroom basin board polish wearing out', status:'New',              days:106},
+  {unit:'Chelsea B',    cat:'Furniture / Decor',     pri:'L4', desc:'Bathroom basin board polish wearing out', status:'New',              days:106},
+  {unit:'Chelsea C',    cat:'Furniture / Decor',     pri:'L4', desc:'Bathroom basin board polish wearing out', status:'New',              days:106},
+  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'L3', desc:'Entrance floods when it rains',           status:'New',              days:99},
+  {unit:'Chelsea A',    cat:'Electrical / Lighting', pri:'L4', desc:'Extension board sockets broken',          status:'New',              days:60},
+  {unit:'Lokko 1BR',    cat:'Electrical / Lighting', pri:'L3', desc:'Door bell switch and bell spoilt',        status:'New',              days:15},
+  {unit:'Chelsea C',    cat:'Plumbing',              pri:'L2', desc:'Chelsea C pump is spoilt',                status:'Waiting for Parts',days:1},
+];
+
+function _mPriBadge(p) {
+  const s = {L1:'background:#FCEBEB;color:#A32D2D',L2:'background:#FFF3E0;color:#854F0B',L3:'background:#E3F2FD;color:#185FA5',L4:'background:#F5F5F5;color:#666'};
+  return `<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;${s[p]||'background:#eee;color:#888'}">${p||'—'}</span>`;
+}
+function _mStatusBadge(s) {
+  const c = s === 'Waiting for Parts' ? 'background:#FFF3E0;color:#854F0B' : s === 'In Progress' ? 'background:#E8F5E9;color:#2E7D32' : 'background:#E3F2FD;color:#185FA5';
+  return `<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;${c}">${s}</span>`;
+}
+
+function mFilterTable() {
+  const u = document.getElementById('m-unitFilter').value;
+  const p = document.getElementById('m-priFilter').value;
+  const rows = _mIssues.filter(i => (!u || i.unit === u) && (!p || i.pri === p));
+  document.getElementById('m-issuesBody').innerHTML = rows.map(i => {
+    const dc = i.days > 90 ? 'color:#c0392b;font-weight:700' : i.days > 30 ? 'color:#e67e22;font-weight:600' : 'color:var(--tx)';
+    return `<tr style="border-top:1px solid var(--br)">
+      <td style="padding:10px 14px;color:var(--tx);font-weight:600">${i.unit}</td>
+      <td style="padding:10px 14px;color:var(--tx3);font-size:12px">${i.cat}</td>
+      <td style="padding:10px 14px">${_mPriBadge(i.pri)}</td>
+      <td style="padding:10px 14px;font-size:12px;color:var(--tx)">${i.desc}</td>
+      <td style="padding:10px 14px">${_mStatusBadge(i.status)}</td>
+      <td style="padding:10px 14px;${dc}">${i.days}</td>
+    </tr>`;
+  }).join('');
+}
+
+let _mChartsBuilt = false;
+function renderMaintenance() {
+  mFilterTable();
+  if (_mChartsBuilt) return;
+  _mChartsBuilt = true;
+  _activeCharts['m-unitChart'] && _activeCharts['m-unitChart'].destroy();
+  _activeCharts['m-priorityChart'] && _activeCharts['m-priorityChart'].destroy();
+  _activeCharts['m-unitChart'] = new Chart(document.getElementById('m-unitChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Chelsea A','Chelsea B','Chelsea C','Lokko 2BR','Lokko 1BR'],
+      datasets: [{ label: 'Open issues', data: [5,4,4,2,1], backgroundColor: '#378ADD', borderRadius: 5, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#999', stepSize: 1 }, border: { display: false } },
+        y: { grid: { display: false }, ticks: { color: '#888' }, border: { display: false } }
+      }
+    }
+  });
+  _activeCharts['m-priorityChart'] = new Chart(document.getElementById('m-priorityChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['L1 Emergency','L2 Urgent','L3 Standard','L4 Cosmetic','None'],
+      datasets: [{ data: [1,2,7,6,1], backgroundColor: ['#E24B4A','#EF9F27','#378ADD','#888780','#ccc'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false } } }
+  });
+}
+// ── END MAINTENANCE DASHBOARD ──────────────────────────────────────────────
 
 function _destroyChart(id) {
   if (_activeCharts[id]) { _activeCharts[id].destroy(); delete _activeCharts[id]; }
