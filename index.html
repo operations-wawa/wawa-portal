@@ -864,21 +864,26 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
   <!-- MAINTENANCE DASHBOARD VIEW -->
   <div id="maintenance-view" style="display:none;padding:36px 40px;max-width:1400px;margin:0 auto;">
 
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <p style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin:0">Maintenance portal — live</p>
+      <span id="m-fetch-status" style="font-size:11px;color:var(--tx3);display:none"></span>
+    </div>
+
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem">
       <div style="background:var(--bg2);border-radius:8px;padding:1rem">
         <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">Total open</p>
-        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)">17</p>
-        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">across 5 units</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)" id="m-total">—</p>
+        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0" data-m-sub="units">loading…</p>
       </div>
       <div style="background:var(--bg2);border-radius:8px;padding:1rem">
         <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">High priority</p>
-        <p style="font-size:24px;font-weight:600;margin:0;color:#c0392b">3</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:#c0392b" id="m-high">—</p>
         <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">Level 1 &amp; 2 active</p>
       </div>
       <div style="background:var(--bg2);border-radius:8px;padding:1rem">
         <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">Avg days open</p>
-        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)">84</p>
-        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0">oldest: 121 days</p>
+        <p style="font-size:24px;font-weight:600;margin:0;color:var(--tx)" id="m-avg">—</p>
+        <p style="font-size:12px;color:var(--tx3);margin:4px 0 0" data-m-sub="oldest">loading…</p>
       </div>
       <div style="background:var(--bg2);border-radius:8px;padding:1rem">
         <p style="font-size:13px;color:var(--tx3);margin:0 0 4px">Tracked spend</p>
@@ -2967,24 +2972,74 @@ function showAdminTab(tab) {
 }
 
 // ── MAINTENANCE DASHBOARD ──────────────────────────────────────────────────
-const _mIssues = [
-  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'L3', desc:'Cockroaches and geckos',                  status:'New',              days:121},
-  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'L4', desc:'Garden is messy',                         status:'In Progress',       days:121},
-  {unit:'Lokko 2BR',    cat:'Electrical / Lighting', pri:'L1', desc:'ECG Bill',                                status:'New',              days:121},
-  {unit:'Lokko 2BR',    cat:'General Maintenance',   pri:'L3', desc:'Paint peeling off',                       status:'New',              days:109},
-  {unit:'Chelsea B',    cat:'Plumbing',              pri:'L3', desc:'Bathroom sewer smell — septic tank',      status:'New',              days:106},
-  {unit:'Chelsea B',    cat:'General Maintenance',   pri:'L4', desc:'Outside wall paint stained',              status:'New',              days:106},
-  {unit:'Chelsea B',    cat:'Plumbing',              pri:'L2', desc:'Septic tank has no ventilation',          status:'New',              days:106},
-  {unit:'Chelsea C',    cat:'General Maintenance',   pri:'L4', desc:'Outside wall stained with black dirt',    status:'New',              days:106},
-  {unit:'Chelsea A',    cat:'Furniture / Decor',     pri:'L3', desc:'Outside wall dirty',                      status:'New',              days:106},
-  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'',   desc:'Bathroom basin board polish wearing out', status:'New',              days:106},
-  {unit:'Chelsea B',    cat:'Furniture / Decor',     pri:'L4', desc:'Bathroom basin board polish wearing out', status:'New',              days:106},
-  {unit:'Chelsea C',    cat:'Furniture / Decor',     pri:'L4', desc:'Bathroom basin board polish wearing out', status:'New',              days:106},
-  {unit:'Chelsea A',    cat:'General Maintenance',   pri:'L3', desc:'Entrance floods when it rains',           status:'New',              days:99},
-  {unit:'Chelsea A',    cat:'Electrical / Lighting', pri:'L4', desc:'Extension board sockets broken',          status:'New',              days:60},
-  {unit:'Lokko 1BR',    cat:'Electrical / Lighting', pri:'L3', desc:'Door bell switch and bell spoilt',        status:'New',              days:15},
-  {unit:'Chelsea C',    cat:'Plumbing',              pri:'L2', desc:'Chelsea C pump is spoilt',                status:'Waiting for Parts',days:1},
-];
+const _M_SHEET_ID  = '1mqlI7tdl1kypEbLVjINF-OJCdAgHqrmXe1qNksiFHlc';
+const _M_GID       = '888352003';
+const _M_OPEN      = new Set(['new','in progress','waiting for parts']);
+const _M_CACHE_KEY = 'wawa_maintenance_cache';
+const _M_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+// Column indices in Form Responses 1 (0-based):
+// 0 Timestamp | 1 Email | 2 Unit | 3 Category | 4 Priority | 5 Description | 6 Photo | 7 Status | 8 Assigned | 9 Cost | 10 Target | 11 Notes | 12 Days Open
+const _M_COL = { unit:2, cat:3, pri:4, desc:5, status:7, days:12 };
+
+let _mLiveData = [];
+
+function _mPriCode(raw) {
+  if (!raw) return '';
+  if (raw.includes('Level 1')) return 'L1';
+  if (raw.includes('Level 2')) return 'L2';
+  if (raw.includes('Level 3')) return 'L3';
+  if (raw.includes('Level 4')) return 'L4';
+  return '';
+}
+
+function _mParseCsv(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (let i = 1; i < lines.length; i++) {   // skip header row
+    const line = lines[i].trim();
+    if (!line) continue;
+    // Simple CSV split — handles quoted fields with commas
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let c = 0; c < line.length; c++) {
+      if (line[c] === '"') { inQ = !inQ; continue; }
+      if (line[c] === ',' && !inQ) { cols.push(cur); cur = ''; continue; }
+      cur += line[c];
+    }
+    cols.push(cur);
+    const status = (cols[_M_COL.status] || '').trim();
+    if (!_M_OPEN.has(status.toLowerCase())) continue;
+    rows.push({
+      unit:   (cols[_M_COL.unit]  || '').trim(),
+      cat:    (cols[_M_COL.cat]   || '').trim(),
+      pri:    _mPriCode((cols[_M_COL.pri] || '').trim()),
+      desc:   (cols[_M_COL.desc]  || '').trim(),
+      status: status,
+      days:   parseInt(cols[_M_COL.days] || '0', 10) || 0,
+    });
+  }
+  // Sort: L1 first, then by days desc
+  const order = {L1:0,L2:1,L3:2,L4:3,'':4};
+  rows.sort((a,b) => (order[a.pri]||4) - (order[b.pri]||4) || b.days - a.days);
+  return rows;
+}
+
+async function _mFetchLive() {
+  // Try cache first
+  try {
+    const cached = JSON.parse(localStorage.getItem(_M_CACHE_KEY) || 'null');
+    if (cached && Date.now() - cached.ts < _M_CACHE_TTL) return cached.rows;
+  } catch(e) {}
+
+  const url = `https://docs.google.com/spreadsheets/d/${_M_SHEET_ID}/gviz/tq?tqx=out:csv&gid=${_M_GID}`;
+  const res  = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
+  const text = await res.text();
+  const rows = _mParseCsv(text);
+  try { localStorage.setItem(_M_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows })); } catch(e) {}
+  return rows;
+}
 
 function _mPriBadge(p) {
   const s = {L1:'background:#FCEBEB;color:#A32D2D',L2:'background:#FFF3E0;color:#854F0B',L3:'background:#E3F2FD;color:#185FA5',L4:'background:#F5F5F5;color:#666'};
@@ -2995,11 +3050,28 @@ function _mStatusBadge(s) {
   return `<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;${c}">${s}</span>`;
 }
 
+function _mUpdateMetrics(rows) {
+  const high   = rows.filter(r => r.pri === 'L1' || r.pri === 'L2').length;
+  const avgD   = rows.length ? Math.round(rows.reduce((s,r) => s + r.days, 0) / rows.length) : 0;
+  const maxD   = rows.length ? Math.max(...rows.map(r => r.days)) : 0;
+  const units  = new Set(rows.map(r => r.unit)).size;
+  document.getElementById('m-total').textContent = rows.length;
+  document.getElementById('m-high').textContent  = high;
+  document.getElementById('m-avg').textContent   = avgD;
+  document.querySelector('#m-total').closest('div').querySelector('.m-sub') && null; // handled below
+  // update subtitles
+  const cards = document.querySelectorAll('#maintenance-view [data-m-sub]');
+  cards.forEach(el => {
+    if (el.dataset.mSub === 'units')  el.textContent = `across ${units} unit${units !== 1 ? 's' : ''}`;
+    if (el.dataset.mSub === 'oldest') el.textContent = `oldest: ${maxD} days`;
+  });
+}
+
 function mFilterTable() {
   const u = document.getElementById('m-unitFilter').value;
   const p = document.getElementById('m-priFilter').value;
-  const rows = _mIssues.filter(i => (!u || i.unit === u) && (!p || i.pri === p));
-  document.getElementById('m-issuesBody').innerHTML = rows.map(i => {
+  const rows = _mLiveData.filter(i => (!u || i.unit === u) && (!p || i.pri === p));
+  document.getElementById('m-issuesBody').innerHTML = rows.length ? rows.map(i => {
     const dc = i.days > 90 ? 'color:#c0392b;font-weight:700' : i.days > 30 ? 'color:#e67e22;font-weight:600' : 'color:var(--tx)';
     return `<tr style="border-top:1px solid var(--br)">
       <td style="padding:10px 14px;color:var(--tx);font-weight:600">${i.unit}</td>
@@ -3009,21 +3081,23 @@ function mFilterTable() {
       <td style="padding:10px 14px">${_mStatusBadge(i.status)}</td>
       <td style="padding:10px 14px;${dc}">${i.days}</td>
     </tr>`;
-  }).join('');
+  }).join('') : `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--tx3)">No open issues match this filter.</td></tr>`;
 }
 
-let _mChartsBuilt = false;
-function renderMaintenance() {
-  mFilterTable();
-  if (_mChartsBuilt) return;
-  _mChartsBuilt = true;
-  _activeCharts['m-unitChart'] && _activeCharts['m-unitChart'].destroy();
-  _activeCharts['m-priorityChart'] && _activeCharts['m-priorityChart'].destroy();
+function _mBuildCharts(rows) {
+  if (_activeCharts['m-unitChart'])    { _activeCharts['m-unitChart'].destroy();    delete _activeCharts['m-unitChart']; }
+  if (_activeCharts['m-priorityChart']){ _activeCharts['m-priorityChart'].destroy();delete _activeCharts['m-priorityChart']; }
+
+  // Units
+  const unitMap = {};
+  rows.forEach(r => { unitMap[r.unit] = (unitMap[r.unit] || 0) + 1; });
+  const unitEntries = Object.entries(unitMap).sort((a,b) => b[1]-a[1]);
+
   _activeCharts['m-unitChart'] = new Chart(document.getElementById('m-unitChart').getContext('2d'), {
     type: 'bar',
     data: {
-      labels: ['Chelsea A','Chelsea B','Chelsea C','Lokko 2BR','Lokko 1BR'],
-      datasets: [{ label: 'Open issues', data: [5,4,4,2,1], backgroundColor: '#378ADD', borderRadius: 5, borderSkipped: false }]
+      labels: unitEntries.map(e => e[0]),
+      datasets: [{ label: 'Open issues', data: unitEntries.map(e => e[1]), backgroundColor: '#378ADD', borderRadius: 5, borderSkipped: false }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, indexAxis: 'y',
@@ -3034,14 +3108,45 @@ function renderMaintenance() {
       }
     }
   });
+
+  // Priority
+  const priMap = {L1:0,L2:0,L3:0,L4:0,'':0};
+  rows.forEach(r => { priMap[r.pri] = (priMap[r.pri]||0) + 1; });
   _activeCharts['m-priorityChart'] = new Chart(document.getElementById('m-priorityChart').getContext('2d'), {
     type: 'doughnut',
     data: {
       labels: ['L1 Emergency','L2 Urgent','L3 Standard','L4 Cosmetic','None'],
-      datasets: [{ data: [1,2,7,6,1], backgroundColor: ['#E24B4A','#EF9F27','#378ADD','#888780','#ccc'], borderWidth: 0 }]
+      datasets: [{ data: [priMap.L1, priMap.L2, priMap.L3, priMap.L4, priMap['']], backgroundColor: ['#E24B4A','#EF9F27','#378ADD','#888780','#ccc'], borderWidth: 0 }]
     },
     options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false } } }
   });
+}
+
+function _mSetStatus(msg, isError) {
+  const el = document.getElementById('m-fetch-status');
+  if (!el) return;
+  el.textContent   = msg;
+  el.style.color   = isError ? '#c0392b' : 'var(--tx3)';
+  el.style.display = msg ? 'block' : 'none';
+}
+
+async function renderMaintenance() {
+  _mSetStatus('Loading live data from sheet…', false);
+  try {
+    _mLiveData = await _mFetchLive();
+    _mSetStatus(`Live — ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`, false);
+  } catch(e) {
+    console.warn('[Maintenance] Live fetch failed, using last cache:', e);
+    try {
+      const cached = JSON.parse(localStorage.getItem(_M_CACHE_KEY) || 'null');
+      if (cached) { _mLiveData = cached.rows; _mSetStatus('Showing cached data — sheet unavailable', true); }
+      else _mSetStatus('Could not load data — check sheet sharing settings', true);
+    } catch(e2) { _mSetStatus('Could not load data', true); }
+  }
+  if (!_mLiveData.length) return;
+  _mUpdateMetrics(_mLiveData);
+  mFilterTable();
+  _mBuildCharts(_mLiveData);
 }
 // ── END MAINTENANCE DASHBOARD ──────────────────────────────────────────────
 
