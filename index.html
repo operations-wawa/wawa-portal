@@ -3032,9 +3032,24 @@ async function _mFetchLive() {
     if (cached && Date.now() - cached.ts < _M_CACHE_TTL) return cached.rows;
   } catch(e) {}
 
+  // Primary: Apps Script endpoint (authenticated, sheet stays private)
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=maintenance', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ok && Array.isArray(json.issues)) {
+        try { localStorage.setItem(_M_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: json.issues })); } catch(e) {}
+        return json.issues;
+      }
+    }
+  } catch(e) {
+    console.warn('[Maintenance] Apps Script fetch failed, trying CSV fallback:', e);
+  }
+
+  // Fallback: public CSV export (requires sheet to be shared "Anyone with link")
   const url = `https://docs.google.com/spreadsheets/d/${_M_SHEET_ID}/gviz/tq?tqx=out:csv&gid=${_M_GID}`;
   const res  = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Both data sources failed. Add ?action=maintenance to Apps Script or share the sheet publicly.`);
   const text = await res.text();
   const rows = _mParseCsv(text);
   try { localStorage.setItem(_M_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows })); } catch(e) {}
