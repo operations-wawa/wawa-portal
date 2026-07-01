@@ -535,7 +535,7 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
           <div class="filter-popup-item" onclick="togglePropFilter('ocean_heights')"><input type="checkbox" data-prop="ocean_heights" onclick="event.stopPropagation()" onchange="togglePropFilter('ocean_heights')"> Ocean Heights</div>
           <div class="filter-popup-item" onclick="togglePropFilter('urban_farmhouse')"><input type="checkbox" data-prop="urban_farmhouse" onclick="event.stopPropagation()" onchange="togglePropFilter('urban_farmhouse')"> Urban Farmhouse</div>
           <div class="filter-popup-item" onclick="togglePropFilter('nshornaa')"><input type="checkbox" data-prop="nshornaa" onclick="event.stopPropagation()" onchange="togglePropFilter('nshornaa')"> Nshornaa</div>
-          <div class="filter-popup-footer"><button class="filter-clear" onclick="clearPropFilter()">Clear all</button></div>
+          <div class="filter-popup-footer" style="display:flex;gap:8px;justify-content:space-between;"><button class="filter-clear" onclick="selectAllProps()">Select all</button><button class="filter-clear" onclick="clearPropFilter()">Clear all</button></div>
         </div>
       </div>
 
@@ -2741,6 +2741,16 @@ function clearPropFilter() {
   const popup = document.getElementById('fp-popup-prop');
   if (popup) popup.style.display = 'none';
   document.getElementById('fp-btn-prop')?.classList.remove('open');
+}
+
+function selectAllProps() {
+  Object.keys(PROP_NAMES).forEach(id => filterProps.add(id));
+  document.querySelectorAll('[data-prop]').forEach(cb => {
+    cb.checked = true;
+    cb.closest('.filter-popup-item')?.classList.add('checked');
+  });
+  renderFilteredTable();
+  renderFilterPills();
 }
 
 function _clearAllFilters() {
