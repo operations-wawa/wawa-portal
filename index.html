@@ -1620,8 +1620,8 @@ function computeProperty(p) {
   const netUSD = Math.round((totalIncUSD - cogsUSD - expUSD) * 100) / 100;
   const netGHS = Math.round((totalIncGHS - cogsGHS - expGHS) * 100) / 100;
 
-  const fxRate = p.fxRate || LIVE_FX_RATE || 11;
-  if (!p.fxRate) console.warn('[Wawa] Missing fxRate for property', p.id, `— using ${LIVE_FX_RATE ? 'live' : 'fallback'} ${fxRate} GHS/USD`);
+  const fxRate = LIVE_FX_RATE || p.fxRate || 11;
+  if (!LIVE_FX_RATE) console.warn('[Wawa] Live FX rate not loaded for property', p.id, `— using ${p.fxRate ? 'Meta tab' : 'fallback'} ${fxRate} GHS/USD`);
 
   const ghsConvUSD  = Math.round((netGHS / fxRate) * 100) / 100;
   const ownerPayout = Math.round((netUSD + ghsConvUSD) * 100) / 100;
