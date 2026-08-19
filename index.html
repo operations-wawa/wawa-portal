@@ -713,6 +713,18 @@ hr{border:none;border-top:1px solid var(--br);margin:18px 0;}
       </table>
     </div>
 
+    <!-- TWG INCOME STATEMENT (P&L) -->
+    <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-bottom:28px;">
+      <div style="padding:18px 24px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--ink)">Income Statement</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:2px" id="twg-pl-period">Profit &amp; loss for The Wawa Group</div>
+        </div>
+        <div style="font-size:10px;color:var(--ink3);text-align:right">all figures in USD equivalent<br/>at the live FX rate</div>
+      </div>
+      <div id="twg-pl-body" style="padding:8px 24px 20px;"></div>
+    </div>
+
     <!-- TWG EARNINGS TREND -->
     <div style="background:var(--nv);border:1px solid var(--br);border-radius:12px;padding:24px;">
       <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:18px">TWG Earnings Trend — Last 6 Months</div>
@@ -1306,7 +1318,7 @@ async function loadAllPeriods() {
     try {
       const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${code}`);
       const json = await res.json();
-      if (json.ok) { PERIOD_DATA[code] = json.data; }
+      if (json.ok) { PERIOD_DATA[code] = json.data; if (json.twgExpenses) TWG_EXPENSES[code] = json.twgExpenses; }
     } catch(e) {
       addLog('Could not load ' + label + ': ' + e.message, 'err');
       auditLog('PERIOD_LOAD_FAILED', label + ' — ' + e.message);
@@ -1387,6 +1399,7 @@ async function loadLiveData(period) {
     }
     // Store in multi-period cache
     PERIOD_DATA[period] = json.data;
+    if (json.twgExpenses) TWG_EXPENSES[period] = json.twgExpenses;
     // Sync filterPeriods to the loaded period
     const _loadedLabel = PERIOD_LABELS.find(l => periodToCode(l) === period) || DEFAULT_PERIOD;
     filterPeriods = new Set([_loadedLabel]);
@@ -1452,6 +1465,7 @@ const OWNER_IDS = ['chelsea','cove','eden','lokko','broadway','mona_lisa','oasis
 
 // ── Raw data storage — every API response is cached here for inspection ──
 window.WAWA_RAW = null;
+const TWG_EXPENSES = {};  // { '2026-06': [ {rawDate,payee,desc,expenseType,category,usd,ghs}, … ] }
 
 // ── Revenue overrides ─────────────────────────────────────────────
 // Stored in localStorage as { "chelsea|2026-01|Queenella Wisner|Jan 2 - Jan 6": {usd:150,ghs:0}, … }
@@ -2837,7 +2851,7 @@ async function _ensurePeriodsLoaded(labels) {
     try {
       const res  = await fetch(APPS_SCRIPT_URL + `?action=all&period=${code}`);
       const json = await res.json();
-      if (json.ok) { PERIOD_DATA[code] = json.data; addLog(`Loaded ${label}.`, 'ok'); }
+      if (json.ok) { PERIOD_DATA[code] = json.data; if (json.twgExpenses) TWG_EXPENSES[code] = json.twgExpenses; addLog(`Loaded ${label}.`, 'ok'); }
     } catch(e) { addLog(`Could not load ${label}: ` + e.message, 'err'); }
   }
 }
@@ -4062,6 +4076,14 @@ function renderTWGEarnings() {
     <td style="padding:12px 16px;text-align:right;color:var(--gd)">100%</td>
   </tr>`;
 
+  // ── INCOME STATEMENT (P&L) ─────────────────────────────────────
+  _renderTWGIncomeStatement({
+    sortedPeriods, periodLabel,
+    feeUSD: totTWGUSD, feeGHS: totTWGGHS,
+    fixedGHS: fixedFeeGHS, fixedUSDEquiv: fixedFeeTotal,
+    fx: fxForFixed
+  });
+
   // ── TREND CHART (TWG fee income, last 6 months) ────────────────
   _destroyChart('twg-trend-chart');
   const trendLabels = PERIOD_LABELS.slice(0,6).reverse();
@@ -4103,6 +4125,74 @@ function renderTWGEarnings() {
       }
     });
   }
+}
+
+// ── TWG INCOME STATEMENT (P&L) ─────────────────────────────────────
+// Revenue = management fees (% of property income + fixed boutique-hotel fees)
+// Expenses = TWG's own operating costs (transport, admin, etc.) from the API
+// Net income = revenue − expenses. All shown in USD equiv at the live rate.
+function _renderTWGIncomeStatement({ sortedPeriods, periodLabel, feeUSD, feeGHS, fixedGHS, fixedUSDEquiv, fx }) {
+  const el = document.getElementById('twg-pl-body');
+  if (!el) return;
+  const sub = document.getElementById('twg-pl-period');
+  if (sub) sub.textContent = 'Profit & loss for The Wawa Group · ' + periodLabel;
+
+  // Convert helper: everything to USD equivalent at the live rate
+  const toUSD = (usd, ghs) => (usd || 0) + (ghs || 0) / fx;
+
+  // ── Revenue ──
+  const feeRevUSD   = toUSD(feeUSD, feeGHS);           // % management fees
+  const fixedRevUSD = fixedUSDEquiv;                    // fixed fees (GHS-based)
+  const totalRevUSD = feeRevUSD + fixedRevUSD;
+
+  // ── Operating expenses (TWG's own costs, grouped by expense type) ──
+  const codes = sortedPeriods.map(l => periodToCode(l));
+  const expRows = [];
+  codes.forEach(code => (TWG_EXPENSES[code] || []).forEach(e => expRows.push(e)));
+  const byType = {};
+  let expUSDraw = 0, expGHSraw = 0;
+  expRows.forEach(e => {
+    const t = (e.expenseType || 'Other').trim() || 'Other';
+    const u = toUSD(parseFloat(e.usd) || 0, parseFloat(e.ghs) || 0);
+    byType[t] = (byType[t] || 0) + u;
+    expUSDraw += parseFloat(e.usd) || 0;
+    expGHSraw += parseFloat(e.ghs) || 0;
+  });
+  const totalExpUSD = toUSD(expUSDraw, expGHSraw);
+  const netUSD = totalRevUSD - totalExpUSD;
+  const margin = totalRevUSD > 0 ? Math.round(netUSD / totalRevUSD * 100) : 0;
+  const expTypes = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+
+  const row = (label, val, opts = {}) => {
+    const { bold, indent, color, border, neg } = opts;
+    return `<div style="display:flex;justify-content:space-between;padding:${bold ? '10px' : '6px'} 0;${border ? 'border-top:2px solid var(--br2);' : 'border-bottom:1px solid var(--br);'}">
+      <span style="font-size:${bold ? 13 : 12}px;font-weight:${bold ? 700 : 400};color:${color || 'var(--ink)'};padding-left:${indent ? 16 : 0}px">${label}</span>
+      <span style="font-size:${bold ? 13 : 12}px;font-weight:${bold ? 700 : 600};color:${color || (neg ? 'var(--rd)' : 'var(--ink)')}">${neg ? '−' : ''}${fmtUSD(val)}</span>
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div style="max-width:560px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 4px">Revenue</div>
+      ${row('Management fees (% of property income)', feeRevUSD, { indent: true })}
+      ${fixedGHS > 0 ? row('Fixed fees — boutique hotels (' + fmtGHS(fixedGHS) + ')', fixedRevUSD, { indent: true }) : ''}
+      ${row('Total Revenue', totalRevUSD, { bold: true, color: 'var(--gr)' })}
+
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:20px 0 4px">Operating Expenses</div>
+      ${expTypes.length ? expTypes.map(([t, v]) => row(t, v, { indent: true, color: 'var(--tx2)' })).join('')
+        : '<div style="font-size:12px;color:var(--tx3);padding:6px 0 6px 16px;border-bottom:1px solid var(--br)">No TWG operating expenses recorded this period.</div>'}
+      ${row('Total Operating Expenses', totalExpUSD, { bold: true, neg: true })}
+
+      ${row('Net Income', netUSD, { bold: true, border: true, color: netUSD >= 0 ? 'var(--gr)' : 'var(--rd)' })}
+      <div style="display:flex;justify-content:space-between;padding:4px 0 2px">
+        <span style="font-size:11px;color:var(--tx3)">Net margin</span>
+        <span style="font-size:11px;font-weight:700;color:${margin >= 0 ? 'var(--gr)' : 'var(--rd)'}">${margin}%</span>
+      </div>
+      <div style="font-size:10px;color:var(--tx3);margin-top:10px;line-height:1.5">
+        GHS amounts converted to USD at ${fx.toFixed(2)} GHS/USD (live rate).
+        Operating expenses reflect ${expRows.length} TWG cost item${expRows.length !== 1 ? 's' : ''} across ${sortedPeriods.length} period${sortedPeriods.length !== 1 ? 's' : ''}.
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
